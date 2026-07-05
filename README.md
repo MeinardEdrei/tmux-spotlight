@@ -6,10 +6,10 @@ basically, i wanted a MacBook-like app switcher for my tmux windows but found ot
 
 <p align="center">
   <kbd>
-    <video src="https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87" width="90%" controls autoplay loop muted></video>
+https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87
   </kbd>
- <br>
- <em>tmux-spotlight doing its thing and killing hoarded sessions.</em>
+  <br>
+  <em>tmux-spotlight doing its thing and killing hoarded sessions.</em>
 </p>
 
 ## here's what's different!
