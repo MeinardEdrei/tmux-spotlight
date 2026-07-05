@@ -1,10 +1,18 @@
 # 🔍 tmux-spotlight
 
-spotlight search but for your tmux tabs. minimal, fast, and doesn't look like a 90s terminal wizard.
+spotlight search but for tmux tabs. minimal, fast, and doesn't look like a 90s terminal wizard.
 
 basically, i wanted a MacBook-like app switcher for my tmux windows but found other plugins way too cluttered and noisy. so i wrote this.
 
-## why though?
+<p align="center">
+  <kbd>
+    <video src="https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87" width="90%" controls autoplay loop muted></video>
+  </kbd>
+ <br>
+ <em>tmux-spotlight doing its thing and killing hoarded sessions.</em>
+</p>
+
+## here's what's different!
 
 - **⚡ zero fluff:** no heavy dependencies. just bash and `fzf`.
 - **🖥️ live previews:** see what's actually running in each tab as you hover (and it strips background colors so you don't get ugly jagged blocks).
