@@ -61,7 +61,7 @@ selected=$(echo -e "$window_list" | fzf \
   --color="pointer:#a6e3a1,prompt:#cba6f7,marker:#f5e0dc,spinner:#f5e0dc" \
   --header="" \
   --preview="$CURRENT_DIR/preview.sh {}" \
-  --preview-window="right:50%:border-left" \
+  --preview-window="right:50%:border-left:noinfo" \
   --bind "ctrl-x:execute-silent(tmux kill-session -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | cut -d '[' -f 2 | cut -d ']' -f 1 | cut -d ':' -f 1))+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "ctrl-d:execute-silent(tmux kill-window -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | cut -d '[' -f 2 | cut -d ']' -f 1))+reload($CURRENT_DIR/switcher.sh --list)"
 )
