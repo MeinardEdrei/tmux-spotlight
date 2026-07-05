@@ -54,7 +54,7 @@ selected=$(echo -e "$window_list" | fzf \
   --height=100% \
   --border=none \
   --margin=1,2 \
-  --no-info \
+  --info=hidden \
   --prompt="    " \
   --pointer="➔" \
   --color="bg:-1,bg+:#1e1e2e,fg:#cdd6f4,fg+:#ffffff,hl:#f38ba8,hl+:#f38ba8" \
