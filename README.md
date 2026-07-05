@@ -4,11 +4,7 @@ spotlight search but for tmux tabs. minimal, fast, and doesn't look like a 90s t
 
 basically, i wanted a MacBook-like app switcher for my tmux windows but found other plugins way too cluttered and noisy. so i wrote this.
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87" width="90%" />
-  <br>
-  <em>tmux-spotlight doing its thing and killing hoarded sessions.</em>
-</p>
+https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87
 
 ## here's what's different!
 
