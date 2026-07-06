@@ -35,6 +35,34 @@ if [ "$1" = "--list" ]; then
   exit 0
 fi
 
+# If run with --zoxide, print the frequently visited directories from zoxide and exit
+if [ "$1" = "--zoxide" ]; then
+  if command -v zoxide >/dev/null 2>&1; then
+    zoxide query -l | sed "s|^$HOME|~|"
+  else
+    echo "  zoxide not installed"
+  fi
+  exit 0
+fi
+
+# If run with --kill-session, kill the target session
+if [ "$1" = "--kill-session" ]; then
+  target=$(echo "$2" | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | tr -d '[]' | cut -d ':' -f 1)
+  if [ -n "$target" ]; then
+    tmux kill-session -t "$target"
+  fi
+  exit 0
+fi
+
+# If run with --kill-window, kill the target window
+if [ "$1" = "--kill-window" ]; then
+  target=$(echo "$2" | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | tr -d '[]')
+  if [ -n "$target" ]; then
+    tmux kill-window -t "$target"
+  fi
+  exit 0
+fi
+
 # Check if we are in tmux. If not, exit.
 if [ -z "$TMUX" ]; then
   echo "Error: Not running inside tmux."
@@ -62,6 +90,12 @@ preview_location=$(get_tmux_option "@spotlight-preview-location" "right")
 preview_ratio=$(get_tmux_option "@spotlight-preview-ratio" "50%")
 bg_color=$(get_tmux_option "@spotlight-background" "default")
 selection_color=$(get_tmux_option "@spotlight-selection" "default")
+
+# Read custom fzf keybindings
+bind_folders=$(get_tmux_option "@spotlight-bind-folders" "alt-f")
+bind_windows=$(get_tmux_option "@spotlight-bind-windows" "alt-w")
+bind_kill_session=$(get_tmux_option "@spotlight-bind-kill-session" "alt-x")
+bind_kill_window=$(get_tmux_option "@spotlight-bind-kill-window" "alt-q")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -127,23 +161,38 @@ selected=$(echo -e "$window_list" | fzf \
   --header="" \
   "${preview_flags[@]}" \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
-  --bind "ctrl-x:execute-silent(tmux kill-session -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | sed 's/[\[\]]//g' | cut -d ':' -f 1))+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "ctrl-d:execute-silent(tmux kill-window -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | sed 's/[\[\]]//g'))+reload($CURRENT_DIR/switcher.sh --list)"
+  --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
+  --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_kill_session}:execute-silent($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)"
 )
 
-# Extract session name and window index from selection and switch
+# Extract selection and switch
 if [ -n "$selected" ]; then
   # Strip ANSI color codes
   clean_line=$(echo "$selected" | sed 's/\x1b\[[0-9;]*m//g')
   
-  # Extract the text inside the square brackets: [session:index]
-  content=$(echo "$clean_line" | grep -oE "\[[^]]+:[0-9]+\]" | head -n 1)
-  content="${content%]}"
-  content="${content#[}"
-  session_name=$(echo "$content" | cut -d ":" -f 1)
-  window_index=$(echo "$content" | cut -d ":" -f 2)
-  
-  if [ -n "$session_name" ] && [ -n "$window_index" ]; then
-    tmux switch-client -t "${session_name}:${window_index}"
+  # Check if the selection is a directory path (does not contain brackets [session:index])
+  if ! echo "$clean_line" | grep -qE '\[[^]]+:[0-9]+\]'; then
+    # It is a zoxide directory!
+    target_path=$(echo "$clean_line" | xargs)
+    # Expand ~ to $HOME
+    target_path="${target_path/#\~/$HOME}"
+    
+    if [ -d "$target_path" ]; then
+      dir_name=$(basename "$target_path")
+      tmux new-window -c "$target_path" -n "$dir_name"
+    fi
+  else
+    # It is a window reference!
+    content=$(echo "$clean_line" | grep -oE "\[[^]]+:[0-9]+\]" | head -n 1)
+    content="${content%]}"
+    content="${content#[}"
+    session_name=$(echo "$content" | cut -d ":" -f 1)
+    window_index=$(echo "$content" | cut -d ":" -f 2)
+    
+    if [ -n "$session_name" ] && [ -n "$window_index" ]; then
+      tmux switch-client -t "${session_name}:${window_index}"
+    fi
   fi
 fi
