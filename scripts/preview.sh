@@ -7,25 +7,24 @@ line="$1"
 # Clean up ANSI escape sequences
 clean_line=$(echo "$line" | sed 's/\x1b\[[0-9;]*m//g')
 
-# Check if the line is a directory path (does not contain brackets [session:index])
-if ! echo "$clean_line" | grep -qE '\[[^]]+:[0-9]+\]'; then
+target=$(echo "$clean_line" | cut -f 2)
+
+# Check if the line is a directory path (does not contain ':')
+if ! echo "$target" | grep -q ":"; then
   # Clean path and expand ~ to $HOME
-  path=$(echo "$clean_line" | xargs)
+  path=$(echo "$clean_line" | cut -f 1 | xargs | sed 's/^📂 //')
   path="${path/#\~/$HOME}"
   
   if [ -d "$path" ]; then
-    echo -e "\e[1;34m📂 Directory: $clean_line\e[0m\n"
+    echo -e "\e[1;34m📂 Directory: $path\e[0m\n"
     ls -1p --color=always "$path" | head -n 40
   fi
   exit 0
 fi
 
-# Extract session name and window index from the square brackets: [session:index]
-content=$(echo "$clean_line" | grep -oE "\[[^]]+:[0-9]+\]" | head -n 1)
-content="${content%]}"
-content="${content#[}"
-session_name=$(echo "$content" | cut -d ":" -f 1)
-window_index=$(echo "$content" | cut -d ":" -f 2)
+# Extract session name and window index from metadata
+session_name=$(echo "$target" | cut -d ':' -f 1)
+window_index=$(echo "$target" | cut -d ':' -f 2)
 
 if [ -n "$session_name" ] && [ -n "$window_index" ]; then
   # Capture pane contents with color codes (-e)

@@ -18,7 +18,34 @@ get_tmux_option() {
 # Helper function to print the formatted window list
 print_window_list() {
   current_session=$(tmux display-message -p '#S')
-  tmux list-windows -a -F '#S | #I | #W | #{pane_current_path} | #{session_attached} | #{window_active}' | while read -r line; do
+  # Store the window list in a variable to avoid listing twice
+  local raw_list
+  raw_list=$(tmux list-windows -a -F '#S | #I | #W | #{pane_current_path} | #{session_attached} | #{window_active}' 2>/dev/null)
+  
+  # First pass: find the maximum length of "$display_name"
+  local max_name_len=0
+  while read -r line; do
+    [ -z "$line" ] && continue
+    local name
+    name=$(echo "$line" | cut -d '|' -f 3 | xargs)
+    # Ensure window name starts with an emoji for clean visual display
+    local char_code
+    char_code=$(LC_ALL=C printf '%d' "'$name" 2>/dev/null)
+    local display_name
+    if [ -n "$char_code" ] && [ "$char_code" -lt 128 ]; then
+      display_name="🖥️ $name"
+    else
+      display_name="$name"
+    fi
+    local name_len=${#display_name}
+    if [ $name_len -gt $max_name_len ]; then
+      max_name_len=$name_len
+    fi
+  done <<< "$raw_list"
+
+  # Second pass: print with dynamic padding
+  while read -r line; do
+    [ -z "$line" ] && continue
     session=$(echo "$line" | cut -d '|' -f 1 | xargs)
     index=$(echo "$line" | cut -d '|' -f 2 | xargs)
     name=$(echo "$line" | cut -d '|' -f 3 | xargs)
@@ -28,17 +55,22 @@ print_window_list() {
     
     path_short=$(echo "$path" | sed "s|^$HOME|~|")
     
-    if [ "$attached" = "1" ] && [ "$active" = "1" ]; then
-      name_fmt="\e[1;32m%-15.15s\e[0m"    # Green bold for active window name
-      session_fmt="\e[35m%-8s\e[0m"       # Magenta for active session badge
+    # Ensure window name starts with an emoji for clean visual display
+    char_code=$(LC_ALL=C printf '%d' "'$name" 2>/dev/null)
+    if [ -n "$char_code" ] && [ "$char_code" -lt 128 ]; then
+      display_name="🖥️ $name"
     else
-      name_fmt="\e[1;37m%-15.15s\e[0m"    # White bold for inactive window name
-      session_fmt="\e[36m%-8s\e[0m"       # Cyan for other session badges
+      display_name="$name"
+    fi
+    
+    if [ "$attached" = "1" ] && [ "$active" = "1" ]; then
+      name_fmt="\e[1;32m%-${max_name_len}.${max_name_len}s\e[0m"    # Green bold for active window name
+    else
+      name_fmt="\e[1;37m%-${max_name_len}.${max_name_len}s\e[0m"    # White bold for inactive window name
     fi
 
-    badge="[$session:$index]"
-    printf "  ${name_fmt}  ${session_fmt}  \e[38;5;244m%s\e[0m\n" "$name" "$badge" "$path_short"
-  done
+    printf "  ${name_fmt}  \e[38;5;244m%s\e[0m\t%s:%s\n" "$display_name" "$path_short" "$session" "$index"
+  done <<< "$raw_list"
 }
 
 # If run with --list, just print the list and exit
@@ -61,13 +93,13 @@ if [ "$1" = "--zoxide" ]; then
     fd_list=$(fd --type d --hidden --exclude ".git" --exclude "node_modules" --exclude ".cache" --exclude ".cargo" --exclude ".npm" --exclude ".mozilla" --exclude ".local" --max-depth 4 . "$search_root" 2>/dev/null)
   fi
   
-  echo -e "$zoxide_list\n$fd_list" | sed 's|/$||' | awk 'NF && !seen[$0]++' | sed "s|^$HOME|~|"
+  echo -e "$zoxide_list\n$fd_list" | sed 's|/$||' | awk 'NF && !seen[$0]++' | sed "s|^$HOME|~|" | sed 's/^/📂 /'
   exit 0
 fi
 
 # If run with --kill-session, kill the target session
 if [ "$1" = "--kill-session" ]; then
-  target=$(echo "$2" | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | tr -d '[]' | cut -d ':' -f 1)
+  target=$(echo "$2" | cut -f 2 | cut -d ':' -f 1)
   if [ -n "$target" ]; then
     tmux kill-session -t "$target"
   fi
@@ -76,8 +108,8 @@ fi
 
 # If run with --kill-window, kill the target window
 if [ "$1" = "--kill-window" ]; then
-  target=$(echo "$2" | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | tr -d '[]')
-  if [ -n "$target" ]; then
+  target=$(echo "$2" | cut -f 2)
+  if [ -n "$target" ] && echo "$target" | grep -q ":"; then
     tmux kill-window -t "$target"
   fi
   exit 0
@@ -168,6 +200,8 @@ selected=$(echo -e "$window_list" | fzf \
   --pointer="" \
   --color="$fzf_colors" \
   --header="" \
+  --delimiter='\t' \
+  --with-nth=1 \
   "${preview_flags[@]}" \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
@@ -178,30 +212,26 @@ selected=$(echo -e "$window_list" | fzf \
 
 # Extract selection and switch
 if [ -n "$selected" ]; then
-  # Strip ANSI color codes
-  clean_line=$(echo "$selected" | sed 's/\x1b\[[0-9;]*m//g')
+  # Strip target from the hidden field
+  target=$(echo "$selected" | cut -f 2)
   
-  # Check if the selection is a directory path (does not contain brackets [session:index])
-  if ! echo "$clean_line" | grep -qE '\[[^]]+:[0-9]+\]'; then
+  if echo "$target" | grep -q ":"; then
+    # It is a window reference!
+    session_name=$(echo "$target" | cut -d ':' -f 1)
+    window_index=$(echo "$target" | cut -d ':' -f 2)
+    
+    if [ -n "$session_name" ] && [ -n "$window_index" ]; then
+      tmux switch-client -t "${session_name}:${window_index}"
+    fi
+  else
     # It is a zoxide directory!
-    target_path=$(echo "$clean_line" | xargs)
+    target_path=$(echo "$selected" | cut -f 1 | xargs | sed 's/^📂 //')
     # Expand ~ to $HOME
     target_path="${target_path/#\~/$HOME}"
     
     if [ -d "$target_path" ]; then
       dir_name=$(basename "$target_path")
       tmux new-window -c "$target_path" -n "$dir_name"
-    fi
-  else
-    # It is a window reference!
-    content=$(echo "$clean_line" | grep -oE "\[[^]]+:[0-9]+\]" | head -n 1)
-    content="${content%]}"
-    content="${content#[}"
-    session_name=$(echo "$content" | cut -d ":" -f 1)
-    window_index=$(echo "$content" | cut -d ":" -f 2)
-    
-    if [ -n "$session_name" ] && [ -n "$window_index" ]; then
-      tmux switch-client -t "${session_name}:${window_index}"
     fi
   fi
 fi
