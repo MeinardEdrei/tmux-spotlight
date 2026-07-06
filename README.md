@@ -6,7 +6,7 @@ basically, i wanted a MacBook-like app switcher for my tmux windows but found ot
 
 <p align="center">
   <kbd>
-    <video src="https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87" width="90%" controls autoplay loop muted></video>
+    <video src="assets/demo.mp4" width="90%" controls autoplay loop muted></video>
   </kbd>
  <br>
  <em>tmux-spotlight in action — fuzzy searching windows and killing hoarded sessions.</em>
@@ -47,11 +47,18 @@ set -g @spotlight-height '60%'
 # toggle the live preview panel (on / off)
 set -g @spotlight-preview 'on'
 
-# preview panel position (right / left / up / down)
+# preview panel position (right / left / top / bottom)
 set -g @spotlight-preview-location 'right'
 
 # preview panel split size
 set -g @spotlight-preview-ratio '50%'
+
+# custom solid background color (defaults to 'default' for transparent)
+# set -g @spotlight-background '#1e1e2e'
+
+# custom selection highlight background (defaults to terminal selection theme)
+# options: 'default' | 'none' / 'transparent' | any ANSI color or hex code
+# set -g @spotlight-selection 'none'
 ```
 
 ## shortcuts in the popup

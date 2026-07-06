@@ -60,6 +60,31 @@ window_list=$(print_window_list)
 show_preview=$(get_tmux_option "@spotlight-preview" "on")
 preview_location=$(get_tmux_option "@spotlight-preview-location" "right")
 preview_ratio=$(get_tmux_option "@spotlight-preview-ratio" "50%")
+bg_color=$(get_tmux_option "@spotlight-background" "default")
+selection_color=$(get_tmux_option "@spotlight-selection" "default")
+
+# Translate top/bottom aliases to fzf up/down syntax
+if [ "$preview_location" = "top" ]; then
+  preview_location="up"
+elif [ "$preview_location" = "bottom" ]; then
+  preview_location="down"
+fi
+
+# Build fzf background options dynamically
+fzf_bg="bg:-1"
+fzf_preview_bg=""
+if [ "$bg_color" != "default" ]; then
+  fzf_bg="bg:$bg_color"
+  fzf_preview_bg=",preview-bg:$bg_color"
+fi
+
+# Build fzf selection options dynamically
+fzf_selection=""
+if [ "$selection_color" = "none" ] || [ "$selection_color" = "transparent" ]; then
+  fzf_selection="bg+:-1"
+elif [ "$selection_color" != "default" ]; then
+  fzf_selection="bg+:$selection_color"
+fi
 
 # Build fzf preview flags dynamically
 preview_flags=()
@@ -82,6 +107,12 @@ else
   preview_flags+=(--preview-window "hidden")
 fi
 
+# Build fzf color string
+fzf_colors="$fzf_bg,fg:#cdd6f4,fg+:#ffffff,hl:#f38ba8,hl+:#f38ba8,prompt:#cba6f7,marker:#f5e0dc,spinner:#f5e0dc$fzf_preview_bg"
+if [ -n "$fzf_selection" ]; then
+  fzf_colors="$fzf_colors,$fzf_selection"
+fi
+
 # Feed into fzf inside the popup with custom MacBook/Spotlight styling.
 selected=$(echo -e "$window_list" | fzf \
   --ansi \
@@ -91,11 +122,11 @@ selected=$(echo -e "$window_list" | fzf \
   --margin=1,2 \
   --info=hidden \
   --prompt="    " \
-  --pointer="➔" \
-  --color="bg:-1,bg+:#1e1e2e,fg:#cdd6f4,fg+:#ffffff,hl:#f38ba8,hl+:#f38ba8" \
-  --color="pointer:#a6e3a1,prompt:#cba6f7,marker:#f5e0dc,spinner:#f5e0dc" \
+  --pointer="" \
+  --color="$fzf_colors" \
   --header="" \
   "${preview_flags[@]}" \
+  --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "ctrl-x:execute-silent(tmux kill-session -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | sed 's/[\[\]]//g' | cut -d ':' -f 1))+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "ctrl-d:execute-silent(tmux kill-window -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | sed 's/[\[\]]//g'))+reload($CURRENT_DIR/switcher.sh --list)"
 )
