@@ -4,7 +4,7 @@ A fast, minimalist fuzzy finder for tmux windows and sessions, powered by `fzf`.
 
 I wanted a MacBook-like app switcher for my tmux environment but found existing plugins too cluttered and noisy. So I wrote this. It currently focuses strictly on window and session management—keeping things minimal, fast, and visually clean without looking like a 90s terminal wizard.
 
-![Demo](assets/demo_v1.2.0.gif?v=1)
+![Demo](assets/demo_v1.2.0.gif?v=2)
 
 *fuzzy searching windows and killing hoarded sessions.*
 
