@@ -75,6 +75,9 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-windows 'alt-w'
 # set -g @spotlight-bind-kill-session 'alt-x'
 # set -g @spotlight-bind-kill-window 'alt-q'
+
+# search root directory for folder mode (defaults to $HOME)
+# set -g @spotlight-folders-dir '$HOME'
 ```
 
 ## Roadmap

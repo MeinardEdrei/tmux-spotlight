@@ -3,6 +3,18 @@
 # Resolve the directory of the current script
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Helper function to get tmux user options
+get_tmux_option() {
+  local option="$1"
+  local default_value="$2"
+  local option_value="$(tmux show-option -gqv "$option")"
+  if [ -z "$option_value" ]; then
+    echo "$default_value"
+  else
+    echo "$option_value"
+  fi
+}
+
 # Helper function to print the formatted window list
 print_window_list() {
   current_session=$(tmux display-message -p '#S')
@@ -35,13 +47,21 @@ if [ "$1" = "--list" ]; then
   exit 0
 fi
 
-# If run with --zoxide, print the frequently visited directories from zoxide and exit
+# If run with --zoxide, print combined Zoxide frequently visited and fd unvisited directories
 if [ "$1" = "--zoxide" ]; then
+  zoxide_list=""
   if command -v zoxide >/dev/null 2>&1; then
-    zoxide query -l | sed "s|^$HOME|~|"
-  else
-    echo "  zoxide not installed"
+    zoxide_list=$(zoxide query -l 2>/dev/null)
   fi
+  
+  fd_list=""
+  if command -v fd >/dev/null 2>&1; then
+    search_root=$(get_tmux_option "@spotlight-folders-dir" "$HOME")
+    search_root="${search_root/#\~/$HOME}"
+    fd_list=$(fd --type d --hidden --exclude ".git" --exclude "node_modules" --exclude ".cache" --exclude ".cargo" --exclude ".npm" --exclude ".mozilla" --exclude ".local" --max-depth 4 . "$search_root" 2>/dev/null)
+  fi
+  
+  echo -e "$zoxide_list\n$fd_list" | sed 's|/$||' | awk 'NF && !seen[$0]++' | sed "s|^$HOME|~|"
   exit 0
 fi
 
@@ -69,17 +89,6 @@ if [ -z "$TMUX" ]; then
   exit 1
 fi
 
-# Helper function to get tmux user options
-get_tmux_option() {
-  local option="$1"
-  local default_value="$2"
-  local option_value="$(tmux show-option -gqv "$option")"
-  if [ -z "$option_value" ]; then
-    echo "$default_value"
-  else
-    echo "$option_value"
-  fi
-}
 
 # Generate initial list
 window_list=$(print_window_list)
