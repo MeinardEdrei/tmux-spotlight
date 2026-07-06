@@ -12,14 +12,15 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 
 ## Features
 
-- **Minimal Dependencies:** Just `bash`, `tmux`, and `fzf`.
-- **Live Previews:** See tab contents on hover. Background colors are automatically stripped to prevent jagged block rendering.
+- **Minimal Dependencies:** Just `bash`, `tmux`, and `fzf` (plus `zoxide` for folder launching).
+- **Zoxide Workspace Launcher:** Toggle to folder-search mode to search frequently visited directories and launch new windows instantly.
+- **Live Previews:** See active terminal contents or directory file listings on hover. Background colors are stripped to keep code and directories looking clean.
 - **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing.
 - **Quick Cleanup:** Kill entire sessions or close individual windows directly inside the picker. The popup reloads instantly.
 
 ## Installation
 
-**Requirement:** Ensure [fzf](https://github.com/junegunn/fzf) is installed.
+**Requirement:** Ensure [fzf](https://github.com/junegunn/fzf) is installed. [zoxide](https://github.com/ajeetdsouza/zoxide) is recommended for directory launching features.
 
 Using [TPM](https://github.com/tmux-plugins/tpm), add this to your `~/.tmux.conf`:
 
@@ -37,9 +38,11 @@ Then hit `prefix + I` to fetch and install the plugin.
 
 ### Inside the Popup
 
-- `Enter` : Switch to the highlighted window/session
-- `Ctrl + x` : Kill the highlighted **session** (reloads list)
-- `Ctrl + d` : Close the highlighted **window/tab** (reloads list)
+- `Enter` : Switch to selection or launch folder (creates a new window in that path)
+- `Alt + f` : Switch to **project folders** (reads your `zoxide` directory database)
+- `Alt + w` : Switch back to **open windows**
+- `Alt + x` : Kill the highlighted **session** (reloads list)
+- `Alt + q` : Close the highlighted **window/tab** (reloads list)
 
 ## Configuration
 
@@ -66,13 +69,18 @@ set -g @spotlight-preview-ratio '50%'
 # custom selection highlight background (defaults to terminal selection theme)
 # options: 'default' | 'none' / 'transparent' | any ANSI color or hex code
 # set -g @spotlight-selection 'none'
+
+# customize popup hotkeys (fzf bind syntax)
+# set -g @spotlight-bind-folders 'alt-f'
+# set -g @spotlight-bind-windows 'alt-w'
+# set -g @spotlight-bind-kill-session 'alt-x'
+# set -g @spotlight-bind-kill-window 'alt-q'
 ```
 
 ## Roadmap
 
-Right now, `tmux-spotlight` is an efficient session manager, but I'm planning to expand it into a broader workspace navigation tool. Coming soon:
+Right now, `tmux-spotlight` is an efficient workspace and session manager. Coming soon:
 
-- **Directory Jumper:** Search frequently visited folders and open them instantly in a new tmux window.
 - **Theme Presets:** Out-of-the-box support for popular themes (e.g., `catppuccin`, `nord`, `gruvbox`, `tokyonight`).
 - **Inline Renaming:** Rename tmux windows and sessions directly from inside the popup.
 - **Smart Filtering:** Minor QoL toggles, like hiding the current active window from the search list.
