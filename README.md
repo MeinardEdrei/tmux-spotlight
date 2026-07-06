@@ -4,7 +4,13 @@ spotlight search but for tmux tabs. minimal, fast, and doesn't look like a 90s t
 
 basically, i wanted a MacBook-like app switcher for my tmux windows but found other plugins way too cluttered and noisy. so i wrote this.
 
-https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87
+<p align="center">
+  <kbd>
+    <video src="https://github.com/user-attachments/assets/20a4c451-b2fb-4149-a3c8-07f6d982cb87" width="90%" controls autoplay loop muted></video>
+  </kbd>
+ <br>
+ <em>tmux-spotlight in action — fuzzy searching windows and killing hoarded sessions.</em>
+</p>
 
 ## here's what's different!
 
@@ -25,7 +31,7 @@ hit `prefix + I` to let TPM download and set it up.
 
 ## configuration
 
-if you want to override the default keybindings or change the popup size, add these to your `~/.tmux.conf`:
+if you want to override the default keybindings, change the popup size, or tweak the layout, add these to your `~/.tmux.conf`:
 
 ```tmux
 # defaults to Tab after prefix (so Ctrl+Space then Tab)
@@ -37,6 +43,15 @@ set -g @spotlight-bind-triggerless 'M-Space'
 # customize the spotlight dimensions
 set -g @spotlight-width '80%'
 set -g @spotlight-height '60%'
+
+# toggle the live preview panel (on / off)
+set -g @spotlight-preview 'on'
+
+# preview panel position (right / left / up / down)
+set -g @spotlight-preview-location 'right'
+
+# preview panel split size
+set -g @spotlight-preview-ratio '50%'
 ```
 
 ## shortcuts in the popup

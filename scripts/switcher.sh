@@ -41,13 +41,48 @@ if [ -z "$TMUX" ]; then
   exit 1
 fi
 
+# Helper function to get tmux user options
+get_tmux_option() {
+  local option="$1"
+  local default_value="$2"
+  local option_value="$(tmux show-option -gqv "$option")"
+  if [ -z "$option_value" ]; then
+    echo "$default_value"
+  else
+    echo "$option_value"
+  fi
+}
+
 # Generate initial list
 window_list=$(print_window_list)
 
+# Read preview layout settings
+show_preview=$(get_tmux_option "@spotlight-preview" "on")
+preview_location=$(get_tmux_option "@spotlight-preview-location" "right")
+preview_ratio=$(get_tmux_option "@spotlight-preview-ratio" "50%")
+
+# Build fzf preview flags dynamically
+preview_flags=()
+if [ "$show_preview" = "on" ]; then
+  # Determine border placement based on location
+  border_side="border-left"
+  if [ "$preview_location" = "left" ]; then
+    border_side="border-right"
+  elif [ "$preview_location" = "up" ]; then
+    border_side="border-bottom"
+  elif [ "$preview_location" = "down" ]; then
+    border_side="border-top"
+  fi
+  
+  preview_flags+=(
+    --preview "$CURRENT_DIR/preview.sh {}"
+    --preview-window "${preview_location}:${preview_ratio}:${border_side}:noinfo"
+  )
+else
+  preview_flags+=(--preview-window "hidden")
+fi
+
 # Feed into fzf inside the popup with custom MacBook/Spotlight styling.
-# We bind:
-# - ctrl-x: kills the selected session and reloads the list
-# - ctrl-d: kills the selected window (tab) and reloads the list
 selected=$(echo -e "$window_list" | fzf \
   --ansi \
   --reverse \
@@ -60,10 +95,9 @@ selected=$(echo -e "$window_list" | fzf \
   --color="bg:-1,bg+:#1e1e2e,fg:#cdd6f4,fg+:#ffffff,hl:#f38ba8,hl+:#f38ba8" \
   --color="pointer:#a6e3a1,prompt:#cba6f7,marker:#f5e0dc,spinner:#f5e0dc" \
   --header="" \
-  --preview="$CURRENT_DIR/preview.sh {}" \
-  --preview-window="right:50%:border-left:noinfo" \
-  --bind "ctrl-x:execute-silent(tmux kill-session -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | cut -d '[' -f 2 | cut -d ']' -f 1 | cut -d ':' -f 1))+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "ctrl-d:execute-silent(tmux kill-window -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | cut -d '[' -f 2 | cut -d ']' -f 1))+reload($CURRENT_DIR/switcher.sh --list)"
+  "${preview_flags[@]}" \
+  --bind "ctrl-x:execute-silent(tmux kill-session -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | sed 's/[\[\]]//g' | cut -d ':' -f 1))+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "ctrl-d:execute-silent(tmux kill-window -t \$(echo {} | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[[^]]+:[0-9]+\]' | head -n 1 | sed 's/[\[\]]//g'))+reload($CURRENT_DIR/switcher.sh --list)"
 )
 
 # Extract session name and window index from selection and switch
@@ -72,7 +106,9 @@ if [ -n "$selected" ]; then
   clean_line=$(echo "$selected" | sed 's/\x1b\[[0-9;]*m//g')
   
   # Extract the text inside the square brackets: [session:index]
-  content=$(echo "$clean_line" | cut -d "[" -f 2 | cut -d "]" -f 1)
+  content=$(echo "$clean_line" | grep -oE "\[[^]]+:[0-9]+\]" | head -n 1)
+  content="${content%]}"
+  content="${content#[}"
   session_name=$(echo "$content" | cut -d ":" -f 1)
   window_index=$(echo "$content" | cut -d ":" -f 2)
   
