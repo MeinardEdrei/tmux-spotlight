@@ -1,58 +1,65 @@
-# 🔍 tmux-spotlight
+# tmux-spotlight
 
-spotlight search but for tmux tabs. minimal, fast, and doesn't look like a 90s terminal wizard.
+A fast, minimalist fuzzy finder for tmux windows and sessions, powered by `fzf`.
 
-basically, i wanted a MacBook-like app switcher for my tmux windows but found other plugins way too cluttered and noisy. so i wrote this.
+I wanted a MacBook-like app switcher for my tmux environment but found existing plugins too cluttered and noisy. So I wrote this. It currently focuses strictly on window and session management—keeping things minimal, fast, and visually clean without looking like a 90s terminal wizard.
 
 <p align="center">
-  <kbd>
-    <img src="assets/demo.gif" width="90%">
-  </kbd>
- <br>
- <em>tmux-spotlight in action — fuzzy searching windows and killing hoarded sessions.</em>
+  <img src="assets/demo.gif" width="90%" alt="tmux-spotlight demo">
+  <br>
+  <em>fuzzy searching windows and killing hoarded sessions.</em>
 </p>
 
-## here's what's different!
+## Features
 
-- **⚡ zero fluff:** no heavy dependencies. just bash and `fzf`.
-- **🖥️ live previews:** see what's actually running in each tab as you hover (and it strips background colors so you don't get ugly jagged blocks).
-- **🗃️ clean columns:** everything aligns on a neat vertical grid.
-- **❌ tab hoarding cleanup:** press `ctrl+x` to kill an entire session, or `ctrl+d` to close a single tab right inside the picker. it reloads instantly without closing the popup.
+- **Minimal Dependencies:** Just `bash`, `tmux`, and `fzf`.
+- **Live Previews:** See tab contents on hover. Background colors are automatically stripped to prevent jagged block rendering.
+- **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing.
+- **Quick Cleanup:** Kill entire sessions or close individual windows directly inside the picker. The popup reloads instantly.
 
-## installation
+## Installation
 
-throw this into your `~/.tmux.conf`:
+**Requirement:** Ensure [fzf](https://github.com/junegunn/fzf) is installed.
+
+Using [TPM](https://github.com/tmux-plugins/tpm), add this to your `~/.tmux.conf`:
 
 ```tmux
 set -g @plugin 'MeinardEdrei/tmux-spotlight'
 ```
+Then hit `prefix + I` to fetch and install the plugin.
 
-hit `prefix + I` to let TPM download and set it up.
+## Keybindings
 
-## configuration
+### Launching
 
-if you want to override the default keybindings, change the popup size, or tweak the layout, add these to your `~/.tmux.conf`:
+- `prefix + Tab` (Default)
+- `Alt + Space` (Triggerless default — use anywhere in tmux)
+
+### Inside the Popup
+
+- `Enter` : Switch to the highlighted window/session
+- `Ctrl + x` : Kill the highlighted **session** (reloads list)
+- `Ctrl + d` : Close the highlighted **window/tab** (reloads list)
+
+## Configuration
+
+You can override the defaults by adding any of these variables to your `~/.tmux.conf`:
 
 ```tmux
-# defaults to Tab after prefix (so Ctrl+Space then Tab)
+# Keybindings
 set -g @spotlight-bind 'Tab'
-
-# defaults to Alt + Space (triggerless - just hit this anywhere in tmux!)
 set -g @spotlight-bind-triggerless 'M-Space'
 
-# customize the spotlight dimensions
+# Dimensions
 set -g @spotlight-width '80%'
 set -g @spotlight-height '60%'
 
-# toggle the live preview panel (on / off)
+# Live Preview Settings
 set -g @spotlight-preview 'on'
-
-# preview panel position (right / left / top / bottom)
 set -g @spotlight-preview-location 'right'
-
-# preview panel split size
 set -g @spotlight-preview-ratio '50%'
 
+# Styling
 # custom solid background color (defaults to 'default' for transparent)
 # set -g @spotlight-background '#1e1e2e'
 
@@ -61,8 +68,11 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-selection 'none'
 ```
 
-## shortcuts in the popup
+## Roadmap
 
-- `ctrl + x` — kill the highlighted **session** and refresh the list
-- `ctrl + d` — close the highlighted **tab/window** and refresh the list
-- `enter` — switch to selection
+Right now, `tmux-spotlight` is an efficient session manager, but I'm planning to expand it into a broader workspace navigation tool. Coming soon:
+
+- **Directory Jumper:** Search frequently visited folders and open them instantly in a new tmux window.
+- **Theme Presets:** Out-of-the-box support for popular themes (e.g., `catppuccin`, `nord`, `gruvbox`, `tokyonight`).
+- **Inline Renaming:** Rename tmux windows and sessions directly from inside the popup.
+- **Smart Filtering:** Minor QoL toggles, like hiding the current active window from the search list.
