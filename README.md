@@ -6,7 +6,7 @@ basically, i wanted a MacBook-like app switcher for my tmux windows but found ot
 
 <p align="center">
   <kbd>
-    <video src="assets/demo.mp4" width="90%" controls autoplay loop muted></video>
+    <img src="assets/demo.gif" width="90%">
   </kbd>
  <br>
  <em>tmux-spotlight in action — fuzzy searching windows and killing hoarded sessions.</em>
