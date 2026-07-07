@@ -14,7 +14,7 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 - **Named Session Launcher:** Toggle to folder-search mode (`zoxide` + `fd`) and instantly launch or switch to a session auto-named after the project directory. Typing a name with no matches creates a brand-new session under that name.
 - **Standalone Launch:** Run it from a plain shell with no tmux running yet — a `tsp` command (auto-installed, no manual setup) opens the same folder-search picker and attaches you straight into the right project session, cold-terminal to tmux in one step.
 - **Live Previews:** See active terminal contents or directory file listings on hover. Background colors are stripped to keep code and directories looking clean.
-- **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing, with the session name shown inline for every window.
+- **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing, with the session name shown inline for every window — colored green when that session already has a client attached elsewhere, while the window name itself only turns green for the exact window you're currently sitting in.
 - **MRU Ordering:** Your most recently used windows float to the top of the list, tracked both from the popup and from native tmux navigation.
 - **Inline Renaming:** Rename the highlighted window or its session directly from the popup — no need to drop to a command prompt.
 - **Quick Cleanup:** Close individual windows instantly, or kill an entire session with a confirmation prompt first (since it closes every window inside it). Both reload the popup instantly.
@@ -115,6 +115,6 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
 - [x] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
 - [ ] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
-- [ ] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
+- [x] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
 - [x] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
 - [ ] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required

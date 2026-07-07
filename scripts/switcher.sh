@@ -57,6 +57,11 @@ fi
 
 # Helper function to print the formatted window list
 print_window_list() {
+  # The session driving this very popup is trivially "attached" — exclude it
+  # so the marker only flags *other* sessions open elsewhere.
+  local current_session=""
+  [ -n "$TMUX" ] && current_session=$(tmux display-message -p '#S' 2>/dev/null)
+
   # Store the window list in a variable to avoid listing twice
   local raw_list
   raw_list=$(tmux list-windows -a -F '#S | #I | #W | #{pane_current_path} | #{session_attached} | #{window_active}' 2>/dev/null)
@@ -104,10 +109,25 @@ print_window_list() {
       display_name="$name"
     fi
 
-    if [ "$attached" = "1" ] && [ "$active" = "1" ]; then
-      name_fmt="\e[1;32m%-${max_name_len}.${max_name_len}s\e[0m"    # Green bold for active window name
+    # Green is reserved for the window you are actually, currently sitting in
+    # right now — not just any window that happens to be "active" within some
+    # other attached session (that would make a different terminal's current
+    # window look like yours).
+    if [ "$session" = "$current_session" ] && [ "$active" = "1" ]; then
+      name_fmt="\e[1;32m%-${max_name_len}.${max_name_len}s\e[0m"    # Green bold for the window you're in right now
     else
-      name_fmt="\e[1;37m%-${max_name_len}.${max_name_len}s\e[0m"    # White bold for inactive window name
+      name_fmt="\e[1;37m%-${max_name_len}.${max_name_len}s\e[0m"    # White bold for every other window
+    fi
+
+    # session_attached is the count of clients attached to this session —
+    # color the session name itself (instead of adding another dot glyph next
+    # to the existing "session · path" separator) when it's open elsewhere.
+    # Safe to reuse green here now that the window-name green above is
+    # strictly scoped to your own current session — no more ambiguity.
+    if [ "$attached" != "0" ] && [ "$session" != "$current_session" ]; then
+      session_colored=$(printf '\e[1;32m%s\e[0m' "$session")
+    else
+      session_colored=$(printf '\e[38;5;244m%s\e[0m' "$session")
     fi
 
     # Rank 0 = most recently used; unseen windows sort last (999999), keeping
@@ -117,7 +137,7 @@ print_window_list() {
       rank=$(awk -v k="${session}:${index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
     fi
 
-    formatted=$(printf "  ${name_fmt}  \e[38;5;244m%s · %s\e[0m\t%s:%s" "$display_name" "$session" "$path_short" "$session" "$index")
+    formatted=$(printf "  ${name_fmt}  %s\e[38;5;244m · %s\e[0m\t%s:%s" "$display_name" "$session_colored" "$path_short" "$session" "$index")
     output="${output}${rank}${sep}${formatted}"$'\n'
   done <<< "$raw_list"
 
