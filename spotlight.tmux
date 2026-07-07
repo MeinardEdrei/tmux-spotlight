@@ -50,3 +50,7 @@ else
   tmux bind-key "$key_bind" display-popup -E -w "$popup_width" -h "$popup_height" "$CURRENT_DIR/scripts/switcher.sh"
   tmux bind-key -n "$key_bind_triggerless" display-popup -E -w "$popup_width" -h "$popup_height" "$CURRENT_DIR/scripts/switcher.sh"
 fi
+
+# Track window switches made outside the popup too (e.g. native prefix
+# navigation), so MRU ordering reflects real usage, not just popup picks.
+tmux set-hook -g after-select-window "run-shell -b '$CURRENT_DIR/scripts/switcher.sh --record-mru \"#{session_name}:#{window_index}\"'"

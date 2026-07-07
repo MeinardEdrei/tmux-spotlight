@@ -15,6 +15,7 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 - **Live Previews:** See active terminal contents or directory file listings on hover. Background colors are stripped to keep code and directories looking clean.
 - **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing.
 - **Quick Cleanup:** Kill entire sessions or close individual windows directly inside the picker. The popup reloads instantly.
+- **MRU Ordering:** Your most recently used windows float to the top of the list, tracked both from the popup and from native tmux navigation.
 
 ## Installation
 
@@ -36,7 +37,8 @@ Then hit `prefix + I` to fetch and install the plugin.
 
 ### Inside the Popup
 
-- `Enter` : Switch to selection or launch folder (creates a new window in that path)
+- `Enter` : Switch to a window, or launch/switch to a **named session** for the selected folder (auto-named after its directory)
+- Typing a name with **no matches** and pressing `Enter` creates a brand-new session under that name
 - `Alt + f` : Switch to **project folders** (reads your `zoxide` directory database)
 - `Alt + w` : Switch back to **open windows**
 - `Alt + x` : Kill the highlighted **session** (reloads list)
@@ -91,5 +93,5 @@ set -g @spotlight-preview-ratio '50%'
 - [ ] Inline Renaming (sessions) — rename tmux sessions directly from inside the popup
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
 - [ ] Smart Filtering — QoL toggles like hiding the current active window from the search list
-- [ ] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
-- [ ] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
+- [x] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
+- [x] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first

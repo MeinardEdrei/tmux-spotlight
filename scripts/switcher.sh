@@ -15,6 +15,28 @@ get_tmux_option() {
   fi
 }
 
+# Most-recently-used tracking: a flat file where each line is a
+# "session:window_index" key, appended in order of use (most recent = last).
+MRU_FILE="$HOME/.cache/tmux-spotlight/mru"
+
+record_mru() {
+  local key="$1"
+  [ -z "$key" ] && return
+  mkdir -p "$(dirname "$MRU_FILE")"
+  touch "$MRU_FILE"
+  grep -vF -x "$key" "$MRU_FILE" > "${MRU_FILE}.tmp" 2>/dev/null
+  mv "${MRU_FILE}.tmp" "$MRU_FILE"
+  echo "$key" >> "$MRU_FILE"
+  # Cap growth: keep only the most recent 200 entries
+  tail -n 200 "$MRU_FILE" > "${MRU_FILE}.tmp" && mv "${MRU_FILE}.tmp" "$MRU_FILE"
+}
+
+# If run with --record-mru, log a switch and exit (used by the tmux hook below)
+if [ "$1" = "--record-mru" ]; then
+  record_mru "$2"
+  exit 0
+fi
+
 # Helper function to print the formatted window list
 print_window_list() {
   current_session=$(tmux display-message -p '#S')
@@ -43,7 +65,9 @@ print_window_list() {
     fi
   done <<< "$raw_list"
 
-  # Second pass: print with dynamic padding
+  # Second pass: format each row, prefixed with its MRU rank for sorting below
+  local sep=$'\x01'
+  local output=""
   while read -r line; do
     [ -z "$line" ] && continue
     session=$(echo "$line" | cut -d '|' -f 1 | xargs)
@@ -52,9 +76,9 @@ print_window_list() {
     path=$(echo "$line" | cut -d '|' -f 4 | xargs)
     attached=$(echo "$line" | cut -d '|' -f 5 | xargs)
     active=$(echo "$line" | cut -d '|' -f 6 | xargs)
-    
+
     path_short=$(echo "$path" | sed "s|^$HOME|~|")
-    
+
     # Ensure window name starts with an emoji for clean visual display
     char_code=$(LC_ALL=C printf '%d' "'$name" 2>/dev/null)
     if [ -n "$char_code" ] && [ "$char_code" -lt 128 ]; then
@@ -62,15 +86,25 @@ print_window_list() {
     else
       display_name="$name"
     fi
-    
+
     if [ "$attached" = "1" ] && [ "$active" = "1" ]; then
       name_fmt="\e[1;32m%-${max_name_len}.${max_name_len}s\e[0m"    # Green bold for active window name
     else
       name_fmt="\e[1;37m%-${max_name_len}.${max_name_len}s\e[0m"    # White bold for inactive window name
     fi
 
-    printf "  ${name_fmt}  \e[38;5;244m%s · %s\e[0m\t%s:%s\n" "$display_name" "$session" "$path_short" "$session" "$index"
+    # Rank 0 = most recently used; unseen windows sort last (999999), keeping
+    # tmux's original order among themselves via a stable sort.
+    local rank=999999
+    if [ -s "$MRU_FILE" ]; then
+      rank=$(awk -v k="${session}:${index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
+    fi
+
+    formatted=$(printf "  ${name_fmt}  \e[38;5;244m%s · %s\e[0m\t%s:%s" "$display_name" "$session" "$path_short" "$session" "$index")
+    output="${output}${rank}${sep}${formatted}"$'\n'
   done <<< "$raw_list"
+
+  echo -n "$output" | sort -t "$sep" -k1,1n -s | cut -d "$sep" -f2-
 }
 
 # If run with --list, just print the list and exit
@@ -258,6 +292,7 @@ selected=$(echo -e "$window_list" | fzf \
   --header="" \
   --delimiter='\t' \
   --with-nth=1 \
+  --print-query \
   "${preview_flags[@]}" \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
@@ -267,28 +302,55 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)"
 )
 
-# Extract selection and switch
-if [ -n "$selected" ]; then
+# With --print-query, fzf prints the typed query as the first line, followed
+# by the matched line (if any). Split them apart.
+query=$(echo "$selected" | sed -n '1p')
+match=$(echo "$selected" | sed -n '2p')
+
+# Sanitize a string into a valid tmux session name (no periods/colons).
+sanitize_session_name() {
+  echo "$1" | tr '.:' '__'
+}
+
+# Create (if needed) and switch to a named session rooted at a directory.
+launch_named_session() {
+  local session_name
+  session_name=$(sanitize_session_name "$1")
+  local start_dir="$2"
+
+  if ! tmux has-session -t "$session_name" 2>/dev/null; then
+    tmux new-session -d -s "$session_name" -c "$start_dir"
+  fi
+  tmux switch-client -t "$session_name"
+  active_index=$(tmux display-message -p -t "$session_name" '#I' 2>/dev/null)
+  record_mru "${session_name}:${active_index}"
+}
+
+if [ -n "$match" ]; then
   # Strip target from the hidden field
-  target=$(echo "$selected" | cut -f 2)
-  
+  target=$(echo "$match" | cut -f 2)
+
   if echo "$target" | grep -q ":"; then
     # It is a window reference!
     session_name=$(echo "$target" | cut -d ':' -f 1)
     window_index=$(echo "$target" | cut -d ':' -f 2)
-    
+
     if [ -n "$session_name" ] && [ -n "$window_index" ]; then
       tmux switch-client -t "${session_name}:${window_index}"
+      record_mru "${session_name}:${window_index}"
     fi
   else
-    # It is a zoxide directory!
-    target_path=$(echo "$selected" | cut -f 1 | xargs | sed 's/^📂 //')
+    # It is a zoxide directory! Launch (or jump back to) a session named after it.
+    target_path=$(echo "$match" | cut -f 1 | xargs | sed 's/^📂 //')
     # Expand ~ to $HOME
     target_path="${target_path/#\~/$HOME}"
-    
+
     if [ -d "$target_path" ]; then
       dir_name=$(basename "$target_path")
-      tmux new-window -c "$target_path" -n "$dir_name"
+      launch_named_session "$dir_name" "$target_path"
     fi
   fi
+elif [ -n "$query" ]; then
+  # No match for the typed query — create a brand-new session under that name.
+  launch_named_session "$query" "$HOME"
 fi
