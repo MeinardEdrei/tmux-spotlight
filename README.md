@@ -113,3 +113,4 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [ ] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
 - [ ] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
 - [ ] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
+- [ ] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required
