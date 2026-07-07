@@ -1,8 +1,8 @@
 # tmux-spotlight
 
-A fast, minimalist fuzzy finder for tmux windows and sessions, powered by `fzf`.
+A fast, minimalist [tmux](https://github.com/tmux/tmux) session manager and window switcher, powered by [fzf](https://github.com/junegunn/fzf). Fuzzy-find windows and sessions, launch named project sessions from `zoxide`/`fd`, rename and clean up on the fly — all from one Spotlight-style popup.
 
-I wanted a MacBook-like app switcher for my tmux environment but found existing plugins too cluttered and noisy. So I wrote this. It currently focuses strictly on window and session management—keeping things minimal, fast, and visually clean without looking like a 90s terminal wizard.
+I wanted a MacBook-like app switcher for my tmux environment but found existing plugins too cluttered and noisy. So I wrote this. It focuses strictly on window and session management — keeping things minimal, fast, and visually clean without looking like a 90s terminal wizard.
 
 ![Demo](assets/demo_v1.2.0.gif)
 
@@ -10,16 +10,18 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 
 ## Features
 
-- **Minimal Dependencies:** Just `bash`, `tmux`, and `fzf` (plus `zoxide` for folder launching).
-- **Zoxide Workspace Launcher:** Toggle to folder-search mode to search frequently visited directories and launch new windows instantly.
+- **Minimal Dependencies:** Just `bash`, `tmux`, and `fzf` (plus `zoxide` and `fd` for folder launching).
+- **Named Session Launcher:** Toggle to folder-search mode (`zoxide` + `fd`) and instantly launch or switch to a session auto-named after the project directory. Typing a name with no matches creates a brand-new session under that name.
 - **Live Previews:** See active terminal contents or directory file listings on hover. Background colors are stripped to keep code and directories looking clean.
-- **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing.
-- **Quick Cleanup:** Kill entire sessions or close individual windows directly inside the picker. The popup reloads instantly.
+- **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing, with the session name shown inline for every window.
 - **MRU Ordering:** Your most recently used windows float to the top of the list, tracked both from the popup and from native tmux navigation.
+- **Inline Renaming:** Rename the highlighted window or its session directly from the popup — no need to drop to a command prompt.
+- **Quick Cleanup:** Close individual windows instantly, or kill an entire session with a confirmation prompt first (since it closes every window inside it). Both reload the popup instantly.
+- **Cancel-Friendly Prompts:** Rename and kill-session prompts support Esc or an empty Enter to back out safely.
 
 ## Installation
 
-**Requirement:** Ensure [fzf](https://github.com/junegunn/fzf) is installed. [zoxide](https://github.com/ajeetdsouza/zoxide) is recommended for directory launching features.
+**Requirement:** Ensure [fzf](https://github.com/junegunn/fzf) is installed. [zoxide](https://github.com/ajeetdsouza/zoxide) and [fd](https://github.com/sharkdp/fd) are recommended for folder-search and named session launching — without either installed, folder mode shows a warning instead of a silent empty list.
 
 Using [TPM](https://github.com/tmux-plugins/tpm), add this to your `~/.tmux.conf`:
 
@@ -39,7 +41,7 @@ Then hit `prefix + I` to fetch and install the plugin.
 
 - `Enter` : Switch to a window, or launch/switch to a **named session** for the selected folder (auto-named after its directory)
 - Typing a name with **no matches** and pressing `Enter` creates a brand-new session under that name
-- `Alt + f` : Switch to **project folders** (reads your `zoxide` directory database)
+- `Alt + f` : Switch to **project folders** (combines your `zoxide` directory database with `fd`-discovered, unvisited directories)
 - `Alt + w` : Switch back to **open windows**
 - `Alt + x` : Kill the highlighted **session** (reloads list)
 - `Alt + q` : Close the highlighted **window/tab** (reloads list)
@@ -83,6 +85,8 @@ set -g @spotlight-preview-ratio '50%'
 # search root directory for folder mode (defaults to $HOME)
 # set -g @spotlight-folders-dir '$HOME'
 ```
+
+MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. Delete this file at any time to reset the ordering back to tmux's default.
 
 ## Roadmap
 
