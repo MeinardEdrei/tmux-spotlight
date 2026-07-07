@@ -19,6 +19,7 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 - **Inline Renaming:** Rename the highlighted window or its session directly from the popup — no need to drop to a command prompt.
 - **Quick Cleanup:** Close individual windows instantly, or kill an entire session with a confirmation prompt first (since it closes every window inside it). Both reload the popup instantly.
 - **Cancel-Friendly Prompts:** Rename prompts cancel instantly on Esc (or safely on an empty Enter). The kill-session prompt requires explicitly typing `y`/`Y` to confirm — anything else, including Enter alone, cancels.
+- **Pane-Level Jumping:** Switch to a specific pane instead of just its window — each row is labeled by what's actually running in it (`nvim`, `npm run dev`, etc.), so you can jump straight to the pane you want in a split window.
 
 ## Installation
 
@@ -52,6 +53,8 @@ Then hit `prefix + I` to fetch and install the plugin.
 - `Alt + q` : Close the highlighted **window/tab** (reloads list)
 - `Alt + r` : Rename the highlighted **window/tab** (prompts for a new name, reloads list)
 - `Alt + s` : Rename the **session** the highlighted window belongs to (prompts for a new name, reloads list)
+- `Alt + e` : Switch to **panes** — jump straight to a specific split (labeled by what's running in it, e.g. `nvim`, `npm`), not just the window containing it
+- `Alt + z` : Close the highlighted **pane** (only while in pane mode; reloads list)
 
 ## Configuration
 
@@ -86,6 +89,8 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-kill-window 'alt-q'
 # set -g @spotlight-bind-rename 'alt-r'
 # set -g @spotlight-bind-rename-session 'alt-s'
+# set -g @spotlight-bind-panes 'alt-e'
+# set -g @spotlight-bind-kill-pane 'alt-z'
 
 # search root directory for folder mode (defaults to $HOME)
 # set -g @spotlight-folders-dir '$HOME'
@@ -114,7 +119,7 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [x] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
 - [x] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
-- [ ] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
+- [x] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
 - [x] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
 - [x] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
 - [ ] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required

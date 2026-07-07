@@ -113,10 +113,12 @@ print_window_list() {
     # right now — not just any window that happens to be "active" within some
     # other attached session (that would make a different terminal's current
     # window look like yours).
+    # Pad only, don't truncate with .N — printf's precision counts bytes, not
+    # characters, so multi-byte emoji prefixes get cut off almost entirely.
     if [ "$session" = "$current_session" ] && [ "$active" = "1" ]; then
-      name_fmt="\e[1;32m%-${max_name_len}.${max_name_len}s\e[0m"    # Green bold for the window you're in right now
+      name_fmt="\e[1;32m%-${max_name_len}s\e[0m"    # Green bold for the window you're in right now
     else
-      name_fmt="\e[1;37m%-${max_name_len}.${max_name_len}s\e[0m"    # White bold for every other window
+      name_fmt="\e[1;37m%-${max_name_len}s\e[0m"    # White bold for every other window
     fi
 
     # session_attached is the count of clients attached to this session —
@@ -144,9 +146,83 @@ print_window_list() {
   echo -n "$output" | sort -t "$sep" -k1,1n -s | cut -d "$sep" -f2-
 }
 
+# Helper function to print the formatted pane list — one row per pane instead
+# of per window, for jumping straight to a specific split (e.g. the pane
+# actually running your dev server) instead of just the containing window.
+print_pane_list() {
+  local current_session=""
+  [ -n "$TMUX" ] && current_session=$(tmux display-message -p '#S' 2>/dev/null)
+
+  local raw_list
+  raw_list=$(tmux list-panes -a -F '#{session_name} | #{window_index} | #{pane_index} | #{pane_current_command} | #{pane_current_path} | #{session_attached} | #{window_active} | #{pane_active}' 2>/dev/null)
+
+  # First pass: find the max length of the display label for clean padding
+  local max_name_len=0
+  while read -r line; do
+    [ -z "$line" ] && continue
+    local command
+    command=$(echo "$line" | cut -d '|' -f 4 | xargs)
+    local display_name="🖥️ $command"
+    local name_len=${#display_name}
+    if [ $name_len -gt $max_name_len ]; then
+      max_name_len=$name_len
+    fi
+  done <<< "$raw_list"
+
+  local sep=$'\x01'
+  local output=""
+  while read -r line; do
+    [ -z "$line" ] && continue
+    session=$(echo "$line" | cut -d '|' -f 1 | xargs)
+    window_index=$(echo "$line" | cut -d '|' -f 2 | xargs)
+    pane_index=$(echo "$line" | cut -d '|' -f 3 | xargs)
+    command=$(echo "$line" | cut -d '|' -f 4 | xargs)
+    path=$(echo "$line" | cut -d '|' -f 5 | xargs)
+    attached=$(echo "$line" | cut -d '|' -f 6 | xargs)
+    window_active=$(echo "$line" | cut -d '|' -f 7 | xargs)
+    pane_active=$(echo "$line" | cut -d '|' -f 8 | xargs)
+
+    path_short=$(echo "$path" | sed "s|^$HOME|~|")
+    display_name="🖥️ $command"
+
+    # Green only for the exact pane you're currently sitting in right now.
+    # Pad only, don't truncate with .N (see print_window_list for why).
+    if [ "$session" = "$current_session" ] && [ "$window_active" = "1" ] && [ "$pane_active" = "1" ]; then
+      name_fmt="\e[1;32m%-${max_name_len}s\e[0m"
+    else
+      name_fmt="\e[1;37m%-${max_name_len}s\e[0m"
+    fi
+
+    if [ "$attached" != "0" ] && [ "$session" != "$current_session" ]; then
+      session_colored=$(printf '\e[1;32m%s\e[0m' "$session")
+    else
+      session_colored=$(printf '\e[38;5;244m%s\e[0m' "$session")
+    fi
+
+    # Reuse the window-level MRU ranking (keyed by session:window, ignoring
+    # pane) so pane mode sorts consistently with window mode rather than
+    # tracking a whole separate MRU history just for panes.
+    local rank=999999
+    if [ -s "$MRU_FILE" ]; then
+      rank=$(awk -v k="${session}:${window_index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
+    fi
+
+    formatted=$(printf "  ${name_fmt}  %s\e[38;5;244m · %s\e[0m\t%s:%s.%s" "$display_name" "$session_colored" "$path_short" "$session" "$window_index" "$pane_index")
+    output="${output}${rank}${sep}${formatted}"$'\n'
+  done <<< "$raw_list"
+
+  echo -n "$output" | sort -t "$sep" -k1,1n -s | cut -d "$sep" -f2-
+}
+
 # If run with --list, just print the list and exit
 if [ "$1" = "--list" ]; then
   print_window_list
+  exit 0
+fi
+
+# If run with --panes, print the pane list and exit
+if [ "$1" = "--panes" ]; then
+  print_pane_list
   exit 0
 fi
 
@@ -215,6 +291,16 @@ if [ "$1" = "--kill-window" ]; then
   target=$(echo "$2" | cut -f 2)
   if [ -n "$target" ] && echo "$target" | grep -q ":"; then
     tmux kill-window -t "$target"
+    prune_mru_key "$target"
+  fi
+  exit 0
+fi
+
+# If run with --kill-pane, kill the target pane
+if [ "$1" = "--kill-pane" ]; then
+  target=$(echo "$2" | cut -f 2)
+  if [ -n "$target" ] && echo "$target" | grep -q "\."; then
+    tmux kill-pane -t "$target"
     prune_mru_key "$target"
   fi
   exit 0
@@ -328,6 +414,8 @@ bind_kill_session=$(get_tmux_option "@spotlight-bind-kill-session" "alt-x")
 bind_kill_window=$(get_tmux_option "@spotlight-bind-kill-window" "alt-q")
 bind_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
 bind_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
+bind_panes=$(get_tmux_option "@spotlight-bind-panes" "alt-e")
+bind_kill_pane=$(get_tmux_option "@spotlight-bind-kill-pane" "alt-z")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -398,8 +486,10 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_panes}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --panes)" \
   --bind "${bind_kill_session}:execute($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_kill_pane}:execute-silent($CURRENT_DIR/switcher.sh --kill-pane {})+reload($CURRENT_DIR/switcher.sh --panes)" \
   --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_rename_session}:execute($CURRENT_DIR/switcher.sh --rename-session {})+reload($CURRENT_DIR/switcher.sh --list)"
 )
