@@ -80,8 +80,12 @@ set -g @spotlight-preview-ratio '50%'
 
 ## Roadmap
 
-Right now, `tmux-spotlight` is an efficient workspace and session manager. Coming soon:
-
-- **Theme Presets:** Out-of-the-box support for popular themes (e.g., `catppuccin`, `nord`, `gruvbox`, `tokyonight`).
-- **Inline Renaming:** Rename tmux windows and sessions directly from inside the popup.
-- **Smart Filtering:** Minor QoL toggles, like hiding the current active window from the search list.
+- [x] Zoxide + fd workspace launcher (search & open project folders instantly)
+- [x] Live previews (terminal contents / directory listings)
+- [x] Quick cleanup (kill sessions/windows from the popup)
+- [x] Clean grid layout with dynamic emoji coding
+- [ ] Inline Renaming — rename tmux windows/sessions directly from inside the popup
+- [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
+- [ ] Smart Filtering — QoL toggles like hiding the current active window from the search list
+- [ ] Session Name Display — show the session a window belongs to directly in the list, not just its window name/path
+- [ ] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
