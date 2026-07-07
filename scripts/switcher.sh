@@ -113,13 +113,18 @@ print_window_list() {
     # right now — not just any window that happens to be "active" within some
     # other attached session (that would make a different terminal's current
     # window look like yours).
-    # Pad only, don't truncate with .N — printf's precision counts bytes, not
-    # characters, so multi-byte emoji prefixes get cut off almost entirely.
     if [ "$session" = "$current_session" ] && [ "$active" = "1" ]; then
-      name_fmt="\e[1;32m%-${max_name_len}s\e[0m"    # Green bold for the window you're in right now
+      name_color="\e[1;32m"    # Green bold for the window you're in right now
     else
-      name_fmt="\e[1;37m%-${max_name_len}s\e[0m"    # White bold for every other window
+      name_color="\e[1;37m"    # White bold for every other window
     fi
+
+    # Pad manually using bash's character count (${#string}), not printf's
+    # %-Ns width — that counts bytes, so multi-byte emoji prefixes throw off
+    # the padding math and misalign the whole column.
+    pad_len=$((max_name_len - ${#display_name}))
+    [ "$pad_len" -lt 0 ] && pad_len=0
+    display_name_padded="${display_name}$(printf '%*s' "$pad_len" '')"
 
     # session_attached is the count of clients attached to this session —
     # color the session name itself (instead of adding another dot glyph next
@@ -139,7 +144,7 @@ print_window_list() {
       rank=$(awk -v k="${session}:${index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
     fi
 
-    formatted=$(printf "  ${name_fmt}  %s\e[38;5;244m · %s\e[0m\t%s:%s" "$display_name" "$session_colored" "$path_short" "$session" "$index")
+    formatted=$(printf "  ${name_color}%s\e[0m  %s\e[38;5;244m · %s\e[0m\t%s:%s" "$display_name_padded" "$session_colored" "$path_short" "$session" "$index")
     output="${output}${rank}${sep}${formatted}"$'\n'
   done <<< "$raw_list"
 
@@ -186,12 +191,16 @@ print_pane_list() {
     display_name="🖥️ $command"
 
     # Green only for the exact pane you're currently sitting in right now.
-    # Pad only, don't truncate with .N (see print_window_list for why).
     if [ "$session" = "$current_session" ] && [ "$window_active" = "1" ] && [ "$pane_active" = "1" ]; then
-      name_fmt="\e[1;32m%-${max_name_len}s\e[0m"
+      name_color="\e[1;32m"
     else
-      name_fmt="\e[1;37m%-${max_name_len}s\e[0m"
+      name_color="\e[1;37m"
     fi
+
+    # Pad manually using character count (see print_window_list for why).
+    pad_len=$((max_name_len - ${#display_name}))
+    [ "$pad_len" -lt 0 ] && pad_len=0
+    display_name_padded="${display_name}$(printf '%*s' "$pad_len" '')"
 
     if [ "$attached" != "0" ] && [ "$session" != "$current_session" ]; then
       session_colored=$(printf '\e[1;32m%s\e[0m' "$session")
@@ -207,7 +216,7 @@ print_pane_list() {
       rank=$(awk -v k="${session}:${window_index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
     fi
 
-    formatted=$(printf "  ${name_fmt}  %s\e[38;5;244m · %s\e[0m\t%s:%s.%s" "$display_name" "$session_colored" "$path_short" "$session" "$window_index" "$pane_index")
+    formatted=$(printf "  ${name_color}%s\e[0m  %s\e[38;5;244m · %s\e[0m\t%s:%s.%s" "$display_name_padded" "$session_colored" "$path_short" "$session" "$window_index" "$pane_index")
     output="${output}${rank}${sep}${formatted}"$'\n'
   done <<< "$raw_list"
 
