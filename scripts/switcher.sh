@@ -81,18 +81,28 @@ fi
 
 # If run with --zoxide, print combined Zoxide frequently visited and fd unvisited directories
 if [ "$1" = "--zoxide" ]; then
+  has_zoxide=0
+  has_fd=0
+
   zoxide_list=""
   if command -v zoxide >/dev/null 2>&1; then
+    has_zoxide=1
     zoxide_list=$(zoxide query -l 2>/dev/null)
   fi
-  
+
   fd_list=""
   if command -v fd >/dev/null 2>&1; then
+    has_fd=1
     search_root=$(get_tmux_option "@spotlight-folders-dir" "$HOME")
     search_root="${search_root/#\~/$HOME}"
     fd_list=$(fd --type d --hidden --exclude ".git" --exclude "node_modules" --exclude ".cache" --exclude ".cargo" --exclude ".npm" --exclude ".mozilla" --exclude ".local" --max-depth 4 . "$search_root" 2>/dev/null)
   fi
-  
+
+  if [ "$has_zoxide" -eq 0 ] && [ "$has_fd" -eq 0 ]; then
+    echo "⚠️  Install 'zoxide' and/or 'fd' to enable folder launching (see README)."
+    exit 0
+  fi
+
   echo -e "$zoxide_list\n$fd_list" | sed 's|/$||' | awk 'NF && !seen[$0]++' | sed "s|^$HOME|~|" | sed 's/^/📂 /'
   exit 0
 fi

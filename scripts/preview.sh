@@ -17,7 +17,12 @@ if ! echo "$target" | grep -q ":"; then
   
   if [ -d "$path" ]; then
     echo -e "\e[1;34m📂 Directory: $path\e[0m\n"
-    ls -1p --color=always "$path" | head -n 40
+    # GNU ls supports --color=always; BSD ls (stock macOS) uses -G and rejects long options.
+    if ls --version >/dev/null 2>&1; then
+      ls -1p --color=always "$path" | head -n 40
+    else
+      CLICOLOR_FORCE=1 ls -1pG "$path" | head -n 40
+    fi
   fi
   exit 0
 fi
