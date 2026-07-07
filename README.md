@@ -55,6 +55,8 @@ Then hit `prefix + I` to fetch and install the plugin.
 - `Alt + s` : Rename the **session** the highlighted window belongs to (prompts for a new name, reloads list)
 - `Alt + e` : Switch to **panes** — jump straight to a specific split (labeled by what's running in it, e.g. `nvim`, `npm`), not just the window containing it
 - `Alt + z` : Close the highlighted **pane** (only while in pane mode; reloads list)
+- `Alt + j` / `Alt + n` : Move down · `Alt + k` / `Alt + p` : Move up (wraps around at the top/bottom of the list)
+- `Home` / `End` : Jump straight to the first / last item — handy on a long list
 
 ## Configuration
 

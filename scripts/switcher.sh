@@ -471,6 +471,7 @@ fi
 selected=$(echo -e "$window_list" | fzf \
   --ansi \
   --reverse \
+  --cycle \
   --height=100% \
   --border=none \
   --margin=1,2 \
@@ -484,6 +485,7 @@ selected=$(echo -e "$window_list" | fzf \
   --print-query \
   "${preview_flags[@]}" \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
+  --bind "home:first,end:last" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_panes}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --panes)" \
