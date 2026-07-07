@@ -12,12 +12,13 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 
 - **Minimal Dependencies:** Just `bash`, `tmux`, and `fzf` (plus `zoxide` and `fd` for folder launching).
 - **Named Session Launcher:** Toggle to folder-search mode (`zoxide` + `fd`) and instantly launch or switch to a session auto-named after the project directory. Typing a name with no matches creates a brand-new session under that name.
+- **Standalone Launch:** Run it from a plain shell with no tmux running yet — a `tsp` command (auto-installed, no manual setup) opens the same folder-search picker and attaches you straight into the right project session, cold-terminal to tmux in one step.
 - **Live Previews:** See active terminal contents or directory file listings on hover. Background colors are stripped to keep code and directories looking clean.
 - **Clean Grid Layout:** Information aligns on a neat vertical grid for fast visual parsing, with the session name shown inline for every window.
 - **MRU Ordering:** Your most recently used windows float to the top of the list, tracked both from the popup and from native tmux navigation.
 - **Inline Renaming:** Rename the highlighted window or its session directly from the popup — no need to drop to a command prompt.
 - **Quick Cleanup:** Close individual windows instantly, or kill an entire session with a confirmation prompt first (since it closes every window inside it). Both reload the popup instantly.
-- **Cancel-Friendly Prompts:** Rename and kill-session prompts support Esc or an empty Enter to back out safely.
+- **Cancel-Friendly Prompts:** Rename prompts cancel instantly on Esc (or safely on an empty Enter). The kill-session prompt requires explicitly typing `y`/`Y` to confirm — anything else, including Enter alone, cancels.
 
 ## Installation
 
