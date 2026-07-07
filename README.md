@@ -92,3 +92,4 @@ set -g @spotlight-preview-ratio '50%'
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
 - [ ] Smart Filtering — QoL toggles like hiding the current active window from the search list
 - [ ] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
+- [ ] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
