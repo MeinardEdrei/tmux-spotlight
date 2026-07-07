@@ -107,11 +107,17 @@ if [ "$1" = "--zoxide" ]; then
   exit 0
 fi
 
-# If run with --kill-session, kill the target session
+# If run with --kill-session, confirm then kill the target session
 if [ "$1" = "--kill-session" ]; then
   target=$(echo "$2" | cut -f 2 | cut -d ':' -f 1)
   if [ -n "$target" ]; then
-    tmux kill-session -t "$target"
+    window_count=$(tmux list-windows -t "$target" 2>/dev/null | wc -l | xargs)
+    clear
+    printf "Kill session \033[1m%s\033[0m and its %s window(s)? (y/N): " "$target" "$window_count"
+    read -r confirm
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+      tmux kill-session -t "$target"
+    fi
   fi
   exit 0
 fi
@@ -256,7 +262,7 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "${bind_kill_session}:execute-silent($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_kill_session}:execute($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)"
 )
