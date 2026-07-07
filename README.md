@@ -57,6 +57,8 @@ Then hit `prefix + I` to fetch and install the plugin.
 - `Alt + z` : Close the highlighted **pane** (only while in pane mode; reloads list)
 - `Alt + j` / `Alt + n` : Move down · `Alt + k` / `Alt + p` : Move up (wraps around at the top/bottom of the list)
 - `Home` / `End` : Jump straight to the first / last item — handy on a long list
+- `?` : Show a keybindings cheatsheet, reflecting your actual configured binds (not just the defaults) — press any key to return
+- A small "`?` for help" hint is always visible above the list by default, so the help screen isn't something you have to already know about — disable with `set -g @spotlight-show-help-hint 'off'`
 
 ## Configuration
 
@@ -93,6 +95,12 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-rename-session 'alt-s'
 # set -g @spotlight-bind-panes 'alt-e'
 # set -g @spotlight-bind-kill-pane 'alt-z'
+# set -g @spotlight-bind-help '?'
+# note: the default '?' bind means typing a literal "?" no longer filters
+# the search box — change it if you regularly search for text containing one
+
+# show a small "? for help" hint above the list (defaults to 'on')
+# set -g @spotlight-show-help-hint 'off'
 
 # search root directory for folder mode (defaults to $HOME)
 # set -g @spotlight-folders-dir '$HOME'
@@ -123,5 +131,6 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [x] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
 - [x] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
 - [x] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
+- [x] In-Popup Help — a `?` cheatsheet showing all keybinds, reflecting the user's actual configured binds
 - [x] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
 - [ ] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required

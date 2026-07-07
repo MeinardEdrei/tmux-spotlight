@@ -390,6 +390,40 @@ if [ "$1" = "--rename-session" ]; then
   exit 0
 fi
 
+# If run with --help, show a keybindings cheatsheet reflecting the user's
+# actual configured binds (not just the defaults), then wait for a keypress.
+if [ "$1" = "--help" ]; then
+  h_folders=$(get_tmux_option "@spotlight-bind-folders" "alt-f")
+  h_windows=$(get_tmux_option "@spotlight-bind-windows" "alt-w")
+  h_panes=$(get_tmux_option "@spotlight-bind-panes" "alt-e")
+  h_kill_session=$(get_tmux_option "@spotlight-bind-kill-session" "alt-x")
+  h_kill_window=$(get_tmux_option "@spotlight-bind-kill-window" "alt-q")
+  h_kill_pane=$(get_tmux_option "@spotlight-bind-kill-pane" "alt-z")
+  h_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
+  h_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
+  h_help=$(get_tmux_option "@spotlight-bind-help" "?")
+
+  clear
+  printf "\033[1mtmux-spotlight — keybindings\033[0m\n\n"
+  printf "  %-14s Switch to the highlighted window, or launch/attach a session for a folder\n" "Enter"
+  printf "  %-14s Move down / up (wraps around)\n" "Alt+j Alt+k"
+  printf "  %-14s Jump to the first / last item\n" "Home / End"
+  printf "  %-14s Switch to project folders (zoxide + fd)\n" "$h_folders"
+  printf "  %-14s Switch to open windows\n" "$h_windows"
+  printf "  %-14s Switch to panes\n" "$h_panes"
+  printf "  %-14s Kill the highlighted session (confirm required)\n" "$h_kill_session"
+  printf "  %-14s Close the highlighted window\n" "$h_kill_window"
+  printf "  %-14s Close the highlighted pane (pane mode only)\n" "$h_kill_pane"
+  printf "  %-14s Rename the highlighted window\n" "$h_rename"
+  printf "  %-14s Rename the highlighted session\n" "$h_rename_session"
+  printf "  %-14s Show this help\n" "$h_help"
+  printf "\n\033[2mHide the \"%s for help\" hint above the list with:\033[0m\n" "$h_help"
+  printf "\033[2m  set -g @spotlight-show-help-hint 'off'\033[0m\n"
+  printf "\n\033[2mPress any key to return...\033[0m"
+  read -rsn1
+  exit 0
+fi
+
 # Switch to a target if already attached to a tmux client, otherwise attach
 # to it fresh — lets this script run standalone from a plain shell too.
 activate_target() {
@@ -425,6 +459,7 @@ bind_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
 bind_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
 bind_panes=$(get_tmux_option "@spotlight-bind-panes" "alt-e")
 bind_kill_pane=$(get_tmux_option "@spotlight-bind-kill-pane" "alt-z")
+bind_help=$(get_tmux_option "@spotlight-bind-help" "?")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -476,6 +511,15 @@ if [ -n "$fzf_selection" ]; then
   fzf_colors="$fzf_colors,$fzf_selection"
 fi
 
+# A small, muted hint so the help screen isn't something you have to already
+# know exists. Kept dim/minimal to match the rest of the UI, and toggleable
+# for anyone who wants the leanest possible look.
+show_help_hint=$(get_tmux_option "@spotlight-show-help-hint" "on")
+header_text=""
+if [ "$show_help_hint" = "on" ]; then
+  header_text=$(printf '\e[38;5;244m%s for help\e[0m' "$bind_help")
+fi
+
 # Feed into fzf inside the popup with custom MacBook/Spotlight styling.
 selected=$(echo -e "$window_list" | fzf \
   --ansi \
@@ -488,7 +532,7 @@ selected=$(echo -e "$window_list" | fzf \
   --prompt="    " \
   --pointer="" \
   --color="$fzf_colors" \
-  --header="" \
+  --header="$header_text" \
   --delimiter='\t' \
   --with-nth=1 \
   --print-query \
@@ -502,7 +546,8 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_pane}:execute-silent($CURRENT_DIR/switcher.sh --kill-pane {})+reload($CURRENT_DIR/switcher.sh --panes)" \
   --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "${bind_rename_session}:execute($CURRENT_DIR/switcher.sh --rename-session {})+reload($CURRENT_DIR/switcher.sh --list)"
+  --bind "${bind_rename_session}:execute($CURRENT_DIR/switcher.sh --rename-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_help}:execute($CURRENT_DIR/switcher.sh --help)"
 )
 
 # With --print-query, fzf prints the typed query as the first line, followed
