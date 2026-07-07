@@ -146,7 +146,18 @@ print_folder_list() {
     has_fd=1
     search_root=$(get_tmux_option "@spotlight-folders-dir" "$HOME")
     search_root="${search_root/#\~/$HOME}"
-    fd_list=$(fd --type d --hidden --exclude ".git" --exclude "node_modules" --exclude ".cache" --exclude ".cargo" --exclude ".npm" --exclude ".mozilla" --exclude ".local" --max-depth 4 . "$search_root" 2>/dev/null)
+
+    fd_exclude_flags=(--exclude ".git" --exclude "node_modules" --exclude ".cache" --exclude ".cargo" --exclude ".npm" --exclude ".mozilla" --exclude ".local")
+    extra_excludes=$(get_tmux_option "@spotlight-folders-exclude" "")
+    if [ -n "$extra_excludes" ]; then
+      IFS=',' read -ra extra_exclude_list <<< "$extra_excludes"
+      for pattern in "${extra_exclude_list[@]}"; do
+        pattern=$(echo "$pattern" | xargs)
+        [ -n "$pattern" ] && fd_exclude_flags+=(--exclude "$pattern")
+      done
+    fi
+
+    fd_list=$(fd --type d --hidden "${fd_exclude_flags[@]}" --max-depth 4 . "$search_root" 2>/dev/null)
   fi
 
   if [ "$has_zoxide" -eq 0 ] && [ "$has_fd" -eq 0 ]; then
