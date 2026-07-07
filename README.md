@@ -96,3 +96,7 @@ set -g @spotlight-preview-ratio '50%'
 - [x] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
 - [x] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
+- [ ] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
+- [ ] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
+- [ ] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
+- [ ] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
