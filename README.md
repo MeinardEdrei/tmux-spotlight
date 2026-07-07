@@ -93,7 +93,6 @@ set -g @spotlight-preview-ratio '50%'
 - [x] Session Name Display — show the session a window belongs to directly in the list, not just its window name/path
 - [x] Inline Renaming (windows) — rename tmux windows directly from inside the popup
 - [x] Inline Renaming (sessions) — rename tmux sessions directly from inside the popup
-- [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
-- [ ] Smart Filtering — QoL toggles like hiding the current active window from the search list
 - [x] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
 - [x] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
+- [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
