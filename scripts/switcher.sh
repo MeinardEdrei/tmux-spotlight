@@ -69,7 +69,7 @@ print_window_list() {
       name_fmt="\e[1;37m%-${max_name_len}.${max_name_len}s\e[0m"    # White bold for inactive window name
     fi
 
-    printf "  ${name_fmt}  \e[38;5;244m%s\e[0m\t%s:%s\n" "$display_name" "$path_short" "$session" "$index"
+    printf "  ${name_fmt}  \e[38;5;244m%s · %s\e[0m\t%s:%s\n" "$display_name" "$session" "$path_short" "$session" "$index"
   done <<< "$raw_list"
 }
 
@@ -125,6 +125,19 @@ if [ "$1" = "--kill-window" ]; then
   exit 0
 fi
 
+# If run with --rename-window, prompt for a new name and rename the target window
+if [ "$1" = "--rename-window" ]; then
+  target=$(echo "$2" | cut -f 2)
+  if [ -n "$target" ] && echo "$target" | grep -q ":"; then
+    printf "Rename \033[1m%s\033[0m to: " "$target"
+    read -r new_name
+    if [ -n "$new_name" ]; then
+      tmux rename-window -t "$target" "$new_name"
+    fi
+  fi
+  exit 0
+fi
+
 # Check if we are in tmux. If not, exit.
 if [ -z "$TMUX" ]; then
   echo "Error: Not running inside tmux."
@@ -147,6 +160,7 @@ bind_folders=$(get_tmux_option "@spotlight-bind-folders" "alt-f")
 bind_windows=$(get_tmux_option "@spotlight-bind-windows" "alt-w")
 bind_kill_session=$(get_tmux_option "@spotlight-bind-kill-session" "alt-x")
 bind_kill_window=$(get_tmux_option "@spotlight-bind-kill-window" "alt-q")
+bind_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -217,7 +231,8 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_session}:execute-silent($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)"
+  --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)"
 )
 
 # Extract selection and switch

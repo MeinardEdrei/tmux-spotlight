@@ -41,6 +41,7 @@ Then hit `prefix + I` to fetch and install the plugin.
 - `Alt + w` : Switch back to **open windows**
 - `Alt + x` : Kill the highlighted **session** (reloads list)
 - `Alt + q` : Close the highlighted **window/tab** (reloads list)
+- `Alt + r` : Rename the highlighted **window/tab** (prompts for a new name, reloads list)
 
 ## Configuration
 
@@ -73,6 +74,7 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-windows 'alt-w'
 # set -g @spotlight-bind-kill-session 'alt-x'
 # set -g @spotlight-bind-kill-window 'alt-q'
+# set -g @spotlight-bind-rename 'alt-r'
 
 # search root directory for folder mode (defaults to $HOME)
 # set -g @spotlight-folders-dir '$HOME'
@@ -84,8 +86,9 @@ set -g @spotlight-preview-ratio '50%'
 - [x] Live previews (terminal contents / directory listings)
 - [x] Quick cleanup (kill sessions/windows from the popup)
 - [x] Clean grid layout with dynamic emoji coding
-- [ ] Inline Renaming — rename tmux windows/sessions directly from inside the popup
+- [x] Session Name Display — show the session a window belongs to directly in the list, not just its window name/path
+- [x] Inline Renaming (windows) — rename tmux windows directly from inside the popup
+- [ ] Inline Renaming (sessions) — rename tmux sessions directly from inside the popup
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
 - [ ] Smart Filtering — QoL toggles like hiding the current active window from the search list
-- [ ] Session Name Display — show the session a window belongs to directly in the list, not just its window name/path
 - [ ] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
