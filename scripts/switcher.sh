@@ -129,9 +129,35 @@ fi
 if [ "$1" = "--rename-window" ]; then
   target=$(echo "$2" | cut -f 2)
   if [ -n "$target" ] && echo "$target" | grep -q ":"; then
-    printf "Rename \033[1m%s\033[0m to: " "$target"
-    read -r new_name
-    if [ -n "$new_name" ]; then
+    current_name=$(tmux display-message -p -t "$target" '#W' 2>/dev/null)
+    clear
+    printf "Rename \033[1m%s\033[0m to (Esc or Enter to cancel): " "${current_name:-$target}"
+
+    # Read one keystroke at a time so Esc can cancel immediately, without
+    # waiting for Enter (plain `read` treats Esc as an ordinary character).
+    new_name=""
+    cancelled=0
+    while IFS= read -rsn1 char; do
+      if [ "$char" = "$(printf '\033')" ]; then
+        cancelled=1
+        break
+      elif [ -z "$char" ]; then
+        # Enter was pressed
+        break
+      elif [ "$char" = $'\x7f' ]; then
+        # Backspace
+        if [ -n "$new_name" ]; then
+          new_name="${new_name%?}"
+          printf '\b \b'
+        fi
+      else
+        new_name="$new_name$char"
+        printf '%s' "$char"
+      fi
+    done
+    echo
+
+    if [ "$cancelled" -eq 0 ] && [ -n "$new_name" ]; then
       tmux rename-window -t "$target" "$new_name"
     fi
   fi
