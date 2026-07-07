@@ -31,6 +31,24 @@ record_mru() {
   tail -n 200 "$MRU_FILE" > "${MRU_FILE}.tmp" && mv "${MRU_FILE}.tmp" "$MRU_FILE"
 }
 
+# Remove one exact "session:index" entry (used when a window is killed)
+prune_mru_key() {
+  local key="$1"
+  [ -z "$key" ] && return
+  [ -f "$MRU_FILE" ] || return
+  grep -vF -x "$key" "$MRU_FILE" > "${MRU_FILE}.tmp" 2>/dev/null
+  mv "${MRU_FILE}.tmp" "$MRU_FILE"
+}
+
+# Remove every entry belonging to a session (used when a session is killed)
+prune_mru_session() {
+  local session="$1"
+  [ -z "$session" ] && return
+  [ -f "$MRU_FILE" ] || return
+  grep -v "^${session}:" "$MRU_FILE" > "${MRU_FILE}.tmp" 2>/dev/null
+  mv "${MRU_FILE}.tmp" "$MRU_FILE"
+}
+
 # If run with --record-mru, log a switch and exit (used by the tmux hook below)
 if [ "$1" = "--record-mru" ]; then
   record_mru "$2"
@@ -151,6 +169,7 @@ if [ "$1" = "--kill-session" ]; then
     read -r confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
       tmux kill-session -t "$target"
+      prune_mru_session "$target"
     fi
   fi
   exit 0
@@ -161,6 +180,7 @@ if [ "$1" = "--kill-window" ]; then
   target=$(echo "$2" | cut -f 2)
   if [ -n "$target" ] && echo "$target" | grep -q ":"; then
     tmux kill-window -t "$target"
+    prune_mru_key "$target"
   fi
   exit 0
 fi
