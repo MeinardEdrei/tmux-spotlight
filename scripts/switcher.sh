@@ -185,40 +185,76 @@ if [ "$1" = "--kill-window" ]; then
   exit 0
 fi
 
+# Read one keystroke at a time so Esc can cancel immediately, without waiting
+# for Enter (plain `read` treats Esc as an ordinary character). Sets
+# PROMPT_RESULT and PROMPT_CANCELLED.
+prompt_line() {
+  PROMPT_RESULT=""
+  PROMPT_CANCELLED=0
+  local char
+  while IFS= read -rsn1 char; do
+    if [ "$char" = "$(printf '\033')" ]; then
+      PROMPT_CANCELLED=1
+      break
+    elif [ -z "$char" ]; then
+      # Enter was pressed
+      break
+    elif [ "$char" = $'\x7f' ]; then
+      # Backspace
+      if [ -n "$PROMPT_RESULT" ]; then
+        PROMPT_RESULT="${PROMPT_RESULT%?}"
+        printf '\b \b'
+      fi
+    else
+      PROMPT_RESULT="$PROMPT_RESULT$char"
+      printf '%s' "$char"
+    fi
+  done
+  echo
+}
+
+# Rewrite MRU entries from one session name to another after a rename
+rename_mru_session() {
+  local old="$1" new="$2"
+  [ -f "$MRU_FILE" ] || return
+  local tmp="${MRU_FILE}.tmp"
+  : > "$tmp"
+  while IFS= read -r line; do
+    case "$line" in
+      "$old":*) echo "${new}:${line#*:}" >> "$tmp" ;;
+      *) echo "$line" >> "$tmp" ;;
+    esac
+  done < "$MRU_FILE"
+  mv "$tmp" "$MRU_FILE"
+}
+
 # If run with --rename-window, prompt for a new name and rename the target window
 if [ "$1" = "--rename-window" ]; then
   target=$(echo "$2" | cut -f 2)
   if [ -n "$target" ] && echo "$target" | grep -q ":"; then
     current_name=$(tmux display-message -p -t "$target" '#W' 2>/dev/null)
     clear
-    printf "Rename \033[1m%s\033[0m to (Esc or Enter to cancel): " "${current_name:-$target}"
+    printf "Rename \033[1m%s\033[0m to (Esc or empty Enter to cancel): " "${current_name:-$target}"
+    prompt_line
 
-    # Read one keystroke at a time so Esc can cancel immediately, without
-    # waiting for Enter (plain `read` treats Esc as an ordinary character).
-    new_name=""
-    cancelled=0
-    while IFS= read -rsn1 char; do
-      if [ "$char" = "$(printf '\033')" ]; then
-        cancelled=1
-        break
-      elif [ -z "$char" ]; then
-        # Enter was pressed
-        break
-      elif [ "$char" = $'\x7f' ]; then
-        # Backspace
-        if [ -n "$new_name" ]; then
-          new_name="${new_name%?}"
-          printf '\b \b'
-        fi
-      else
-        new_name="$new_name$char"
-        printf '%s' "$char"
-      fi
-    done
-    echo
+    if [ "$PROMPT_CANCELLED" -eq 0 ] && [ -n "$PROMPT_RESULT" ]; then
+      tmux rename-window -t "$target" "$PROMPT_RESULT"
+    fi
+  fi
+  exit 0
+fi
 
-    if [ "$cancelled" -eq 0 ] && [ -n "$new_name" ]; then
-      tmux rename-window -t "$target" "$new_name"
+# If run with --rename-session, prompt for a new name and rename the target session
+if [ "$1" = "--rename-session" ]; then
+  target=$(echo "$2" | cut -f 2 | cut -d ':' -f 1)
+  if [ -n "$target" ]; then
+    clear
+    printf "Rename session \033[1m%s\033[0m to (Esc or empty Enter to cancel): " "$target"
+    prompt_line
+
+    if [ "$PROMPT_CANCELLED" -eq 0 ] && [ -n "$PROMPT_RESULT" ]; then
+      tmux rename-session -t "$target" "$PROMPT_RESULT"
+      rename_mru_session "$target" "$PROMPT_RESULT"
     fi
   fi
   exit 0
@@ -247,6 +283,7 @@ bind_windows=$(get_tmux_option "@spotlight-bind-windows" "alt-w")
 bind_kill_session=$(get_tmux_option "@spotlight-bind-kill-session" "alt-x")
 bind_kill_window=$(get_tmux_option "@spotlight-bind-kill-window" "alt-q")
 bind_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
+bind_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -319,7 +356,8 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_session}:execute($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)"
+  --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
+  --bind "${bind_rename_session}:execute($CURRENT_DIR/switcher.sh --rename-session {})+reload($CURRENT_DIR/switcher.sh --list)"
 )
 
 # With --print-query, fzf prints the typed query as the first line, followed
