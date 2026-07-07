@@ -57,7 +57,6 @@ fi
 
 # Helper function to print the formatted window list
 print_window_list() {
-  current_session=$(tmux display-message -p '#S')
   # Store the window list in a variable to avoid listing twice
   local raw_list
   raw_list=$(tmux list-windows -a -F '#S | #I | #W | #{pane_current_path} | #{session_attached} | #{window_active}' 2>/dev/null)
@@ -131,8 +130,8 @@ if [ "$1" = "--list" ]; then
   exit 0
 fi
 
-# If run with --zoxide, print combined Zoxide frequently visited and fd unvisited directories
-if [ "$1" = "--zoxide" ]; then
+# Print combined Zoxide frequently-visited and fd unvisited directories
+print_folder_list() {
   has_zoxide=0
   has_fd=0
 
@@ -152,10 +151,15 @@ if [ "$1" = "--zoxide" ]; then
 
   if [ "$has_zoxide" -eq 0 ] && [ "$has_fd" -eq 0 ]; then
     echo "⚠️  Install 'zoxide' and/or 'fd' to enable folder launching (see README)."
-    exit 0
+    return
   fi
 
   echo -e "$zoxide_list\n$fd_list" | sed 's|/$||' | awk 'NF && !seen[$0]++' | sed "s|^$HOME|~|" | sed 's/^/📂 /'
+}
+
+# If run with --zoxide, print the folder list and exit
+if [ "$1" = "--zoxide" ]; then
+  print_folder_list
   exit 0
 fi
 
@@ -260,15 +264,24 @@ if [ "$1" = "--rename-session" ]; then
   exit 0
 fi
 
-# Check if we are in tmux. If not, exit.
-if [ -z "$TMUX" ]; then
-  echo "Error: Not running inside tmux."
-  exit 1
+# Switch to a target if already attached to a tmux client, otherwise attach
+# to it fresh — lets this script run standalone from a plain shell too.
+activate_target() {
+  local target="$1"
+  if [ -n "$TMUX" ]; then
+    tmux switch-client -t "$target"
+  else
+    tmux attach-session -t "$target"
+  fi
+}
+
+# Generate initial list. Outside tmux there's nothing to switch to yet, so
+# start in folder-search mode instead of an empty window list.
+if [ -n "$TMUX" ]; then
+  window_list=$(print_window_list)
+else
+  window_list=$(print_folder_list)
 fi
-
-
-# Generate initial list
-window_list=$(print_window_list)
 
 # Read preview layout settings
 show_preview=$(get_tmux_option "@spotlight-preview" "on")
@@ -379,9 +392,9 @@ launch_named_session() {
   if ! tmux has-session -t "$session_name" 2>/dev/null; then
     tmux new-session -d -s "$session_name" -c "$start_dir"
   fi
-  tmux switch-client -t "$session_name"
   active_index=$(tmux display-message -p -t "$session_name" '#I' 2>/dev/null)
   record_mru "${session_name}:${active_index}"
+  activate_target "$session_name"
 }
 
 if [ -n "$match" ]; then
@@ -394,8 +407,8 @@ if [ -n "$match" ]; then
     window_index=$(echo "$target" | cut -d ':' -f 2)
 
     if [ -n "$session_name" ] && [ -n "$window_index" ]; then
-      tmux switch-client -t "${session_name}:${window_index}"
       record_mru "${session_name}:${window_index}"
+      activate_target "${session_name}:${window_index}"
     fi
   else
     # It is a zoxide directory! Launch (or jump back to) a session named after it.

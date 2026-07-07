@@ -34,8 +34,12 @@ Then hit `prefix + I` to fetch and install the plugin.
 
 ### Launching
 
-- `prefix + Tab` (Default)
+- `prefix + Tab` (Default, inside tmux)
 - `Alt + Space` (Triggerless default — use anywhere in tmux)
+- **From a plain shell (no tmux running yet):** a `tsp` alias/function is installed automatically the first time the plugin loads (detects bash/zsh/fish via tmux's own `default-shell` setting, and skips if already installed). After starting tmux once, reload your shell and run `tsp` from any terminal — tmux running or not — to open straight into folder-search mode and **attach** to the picked/created session instead of switching, since there's no existing tmux client to switch from.
+  - Disable auto-install with `set -g @spotlight-auto-alias 'off'` in your `~/.tmux.conf`.
+  - Customize the alias name with `set -g @spotlight-alias-name 'yourname'` (defaults to `tsp`).
+  - To install manually instead (or reinstall after changing the name): `~/.tmux/plugins/tmux-spotlight/scripts/install-shell-alias.sh [alias-name]`
 
 ### Inside the Popup
 
@@ -84,6 +88,10 @@ set -g @spotlight-preview-ratio '50%'
 
 # search root directory for folder mode (defaults to $HOME)
 # set -g @spotlight-folders-dir '$HOME'
+
+# standalone-launch shell alias (see Launching section above)
+# set -g @spotlight-auto-alias 'off'
+# set -g @spotlight-alias-name 'tsp'
 ```
 
 MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. Delete this file at any time to reset the ordering back to tmux's default.
@@ -100,7 +108,7 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [x] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
 - [x] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
 - [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
-- [ ] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
+- [x] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
 - [ ] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
 - [ ] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
 - [ ] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories

@@ -54,3 +54,18 @@ fi
 # Track window switches made outside the popup too (e.g. native prefix
 # navigation), so MRU ordering reflects real usage, not just popup picks.
 tmux set-hook -g after-select-window "run-shell -b '$CURRENT_DIR/scripts/switcher.sh --record-mru \"#{session_name}:#{window_index}\"'"
+
+# Auto-install the standalone-launch shell alias/function on first load, so
+# new users don't have to discover and run install-shell-alias.sh manually.
+# The script is idempotent (skips if already installed), so this is a no-op
+# on every subsequent tmux start. Opt out with @spotlight-auto-alias 'off'.
+auto_alias=$(get_tmux_option "@spotlight-auto-alias" "on")
+alias_name=$(get_tmux_option "@spotlight-alias-name" "tsp")
+if [ "$auto_alias" = "on" ]; then
+  # tmux's own default-shell is a more reliable signal than $SHELL, which
+  # reflects the registered login shell and can mismatch what's actually
+  # running (e.g. fish launched directly by a terminal emulator).
+  default_shell_path=$(tmux show-option -gqv default-shell)
+  default_shell_name=$(basename "${default_shell_path:-}")
+  tmux run-shell -b "'$CURRENT_DIR/scripts/install-shell-alias.sh' '$alias_name' '$default_shell_name'"
+fi
