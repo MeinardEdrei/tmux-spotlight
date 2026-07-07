@@ -4,7 +4,7 @@ A fast, minimalist [tmux](https://github.com/tmux/tmux) session manager and wind
 
 I wanted a MacBook-like app switcher for my tmux environment but found existing plugins too cluttered and noisy. So I wrote this. It focuses strictly on window and session management — keeping things minimal, fast, and visually clean without looking like a 90s terminal wizard.
 
-![Demo](assets/demo_v1.2.0.gif)
+![Demo](assets/demo.gif)
 
 *fuzzy searching windows and killing hoarded sessions.*
 
