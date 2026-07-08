@@ -1,12 +1,12 @@
 # tmux-spotlight
 
-A fast, minimalist [tmux](https://github.com/tmux/tmux) session manager and window switcher, powered by [fzf](https://github.com/junegunn/fzf). Fuzzy-find windows and sessions, launch named project sessions from `zoxide`/`fd`, rename and clean up on the fly — all from one Spotlight-style popup.
+A fast, minimalist [tmux](https://github.com/tmux/tmux) session manager and window switcher, powered by [fzf](https://github.com/junegunn/fzf). Fuzzy-find windows, panes, and sessions, launch named project sessions from `zoxide`/`fd` — even from a cold shell before tmux is running — search scrollback live, and rename/clean up on the fly, all from one Spotlight-style popup.
 
 I wanted a MacBook-like app switcher for my tmux environment but found existing plugins too cluttered and noisy. So I wrote this. It focuses strictly on window and session management — keeping things minimal, fast, and visually clean without looking like a 90s terminal wizard.
 
 ![Demo](assets/demo.gif)
 
-*fuzzy searching windows and killing hoarded sessions.*
+*fuzzy searching windows, launching named sessions from a folder, and cleaning up hoarded ones.*
 
 ## Features
 
