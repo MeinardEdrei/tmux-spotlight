@@ -20,6 +20,7 @@ I wanted a MacBook-like app switcher for my tmux environment but found existing 
 - **Quick Cleanup:** Close individual windows instantly, or kill an entire session with a confirmation prompt first (since it closes every window inside it). Both reload the popup instantly.
 - **Cancel-Friendly Prompts:** Rename prompts cancel instantly on Esc (or safely on an empty Enter). The kill-session prompt requires explicitly typing `y`/`Y` to confirm — anything else, including Enter alone, cancels.
 - **Pane-Level Jumping:** Switch to a specific pane instead of just its window — each row is labeled by what's actually running in it (`nvim`, `npm run dev`, etc.), so you can jump straight to the pane you want in a split window.
+- **Scrollback Search:** Fuzzy-search a window's full terminal history across every pane, live — no autosave daemon or snapshot required — and land right on that line in copy-mode. Note: panes running full-screen apps (Neovim, `less`, `htop`, etc.) only ever expose their current screen, not deeper history — those apps use the terminal's alternate-screen mode, which by design isn't recorded in scrollback at all, in tmux or any terminal.
 
 ## Installation
 
@@ -55,6 +56,7 @@ Then hit `prefix + I` to fetch and install the plugin.
 - `Alt + s` : Rename the **session** the highlighted window belongs to (prompts for a new name, reloads list)
 - `Alt + e` : Switch to **panes** — jump straight to a specific split (labeled by what's running in it, e.g. `nvim`, `npm`), not just the window containing it
 - `Alt + z` : Close the highlighted **pane** (only while in pane mode; reloads list)
+- `Alt + /` : **Scrollback search** — fuzzy-search every pane's terminal history in the highlighted window (live, no save/snapshot step) and jump straight to that line in copy-mode
 - `Alt + j` / `Alt + n` : Move down · `Alt + k` / `Alt + p` : Move up (wraps around at the top/bottom of the list)
 - `Home` / `End` : Jump straight to the first / last item — handy on a long list
 - `?` : Show a keybindings cheatsheet, reflecting your actual configured binds (not just the defaults) — press any key to return
@@ -95,6 +97,7 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-rename-session 'alt-s'
 # set -g @spotlight-bind-panes 'alt-e'
 # set -g @spotlight-bind-kill-pane 'alt-z'
+# set -g @spotlight-bind-scrollback 'alt-/'
 # set -g @spotlight-bind-help '?'
 # note: the default '?' bind means typing a literal "?" no longer filters
 # the search box — change it if you regularly search for text containing one
@@ -133,4 +136,4 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [x] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
 - [x] In-Popup Help — a `?` cheatsheet showing all keybinds, reflecting the user's actual configured binds
 - [x] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
-- [ ] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required
+- [x] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required

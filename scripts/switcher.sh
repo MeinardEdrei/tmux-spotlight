@@ -3,6 +3,14 @@
 # Resolve the directory of the current script
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Trim leading/trailing whitespace from stdin. Unlike `| xargs` (used
+# throughout for the same purpose), this doesn't choke on unmatched quote
+# characters — a real occurrence in window/session names, paths, and
+# especially free-form scrollback content (contractions, code, etc.).
+trim() {
+  sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
 # Helper function to get tmux user options
 get_tmux_option() {
   local option="$1"
@@ -12,6 +20,19 @@ get_tmux_option() {
     echo "$default_value"
   else
     echo "$option_value"
+  fi
+}
+
+# Switch to a target if already attached to a tmux client, otherwise attach
+# to it fresh — lets this script run standalone from a plain shell too.
+# Defined early since several --mode handlers below exit before the main
+# fzf invocation section that used to define this.
+activate_target() {
+  local target="$1"
+  if [ -n "$TMUX" ]; then
+    tmux switch-client -t "$target"
+  else
+    tmux attach-session -t "$target"
   fi
 }
 
@@ -71,7 +92,7 @@ print_window_list() {
   while read -r line; do
     [ -z "$line" ] && continue
     local name
-    name=$(echo "$line" | cut -d '|' -f 3 | xargs)
+    name=$(echo "$line" | cut -d '|' -f 3 | trim)
     # Ensure window name starts with an emoji for clean visual display
     local char_code
     char_code=$(LC_ALL=C printf '%d' "'$name" 2>/dev/null)
@@ -92,12 +113,12 @@ print_window_list() {
   local output=""
   while read -r line; do
     [ -z "$line" ] && continue
-    session=$(echo "$line" | cut -d '|' -f 1 | xargs)
-    index=$(echo "$line" | cut -d '|' -f 2 | xargs)
-    name=$(echo "$line" | cut -d '|' -f 3 | xargs)
-    path=$(echo "$line" | cut -d '|' -f 4 | xargs)
-    attached=$(echo "$line" | cut -d '|' -f 5 | xargs)
-    active=$(echo "$line" | cut -d '|' -f 6 | xargs)
+    session=$(echo "$line" | cut -d '|' -f 1 | trim)
+    index=$(echo "$line" | cut -d '|' -f 2 | trim)
+    name=$(echo "$line" | cut -d '|' -f 3 | trim)
+    path=$(echo "$line" | cut -d '|' -f 4 | trim)
+    attached=$(echo "$line" | cut -d '|' -f 5 | trim)
+    active=$(echo "$line" | cut -d '|' -f 6 | trim)
 
     path_short=$(echo "$path" | sed "s|^$HOME|~|")
 
@@ -166,7 +187,7 @@ print_pane_list() {
   while read -r line; do
     [ -z "$line" ] && continue
     local command
-    command=$(echo "$line" | cut -d '|' -f 4 | xargs)
+    command=$(echo "$line" | cut -d '|' -f 4 | trim)
     local display_name="🖥️ $command"
     local name_len=${#display_name}
     if [ $name_len -gt $max_name_len ]; then
@@ -178,14 +199,14 @@ print_pane_list() {
   local output=""
   while read -r line; do
     [ -z "$line" ] && continue
-    session=$(echo "$line" | cut -d '|' -f 1 | xargs)
-    window_index=$(echo "$line" | cut -d '|' -f 2 | xargs)
-    pane_index=$(echo "$line" | cut -d '|' -f 3 | xargs)
-    command=$(echo "$line" | cut -d '|' -f 4 | xargs)
-    path=$(echo "$line" | cut -d '|' -f 5 | xargs)
-    attached=$(echo "$line" | cut -d '|' -f 6 | xargs)
-    window_active=$(echo "$line" | cut -d '|' -f 7 | xargs)
-    pane_active=$(echo "$line" | cut -d '|' -f 8 | xargs)
+    session=$(echo "$line" | cut -d '|' -f 1 | trim)
+    window_index=$(echo "$line" | cut -d '|' -f 2 | trim)
+    pane_index=$(echo "$line" | cut -d '|' -f 3 | trim)
+    command=$(echo "$line" | cut -d '|' -f 4 | trim)
+    path=$(echo "$line" | cut -d '|' -f 5 | trim)
+    attached=$(echo "$line" | cut -d '|' -f 6 | trim)
+    window_active=$(echo "$line" | cut -d '|' -f 7 | trim)
+    pane_active=$(echo "$line" | cut -d '|' -f 8 | trim)
 
     path_short=$(echo "$path" | sed "s|^$HOME|~|")
     display_name="🖥️ $command"
@@ -257,7 +278,7 @@ print_folder_list() {
     if [ -n "$extra_excludes" ]; then
       IFS=',' read -ra extra_exclude_list <<< "$extra_excludes"
       for pattern in "${extra_exclude_list[@]}"; do
-        pattern=$(echo "$pattern" | xargs)
+        pattern=$(echo "$pattern" | trim)
         [ -n "$pattern" ] && fd_exclude_flags+=(--exclude "$pattern")
       done
     fi
@@ -283,7 +304,7 @@ fi
 if [ "$1" = "--kill-session" ]; then
   target=$(echo "$2" | cut -f 2 | cut -d ':' -f 1)
   if [ -n "$target" ]; then
-    window_count=$(tmux list-windows -t "$target" 2>/dev/null | wc -l | xargs)
+    window_count=$(tmux list-windows -t "$target" 2>/dev/null | wc -l | trim)
     clear
     printf "Kill session \033[1m%s\033[0m and its %s window(s)? (y/N): " "$target" "$window_count"
     read -r confirm
@@ -311,6 +332,59 @@ if [ "$1" = "--kill-pane" ]; then
   if [ -n "$target" ] && echo "$target" | grep -q "\."; then
     tmux kill-pane -t "$target"
     prune_mru_key "$target"
+  fi
+  exit 0
+fi
+
+# If run with --scrollback, fuzzy-search every pane's terminal history in the
+# highlighted window (live, no snapshot/save step) and jump straight to the
+# matched line in copy-mode.
+if [ "$1" = "--scrollback" ]; then
+  target=$(echo "$2" | cut -f 2)
+  if [ -n "$target" ] && echo "$target" | grep -q ":"; then
+    session_name=$(echo "$target" | cut -d ':' -f 1)
+    window_index=$(echo "$target" | cut -d ':' -f 2 | cut -d '.' -f 1)
+    window_target="${session_name}:${window_index}"
+
+    clear
+    # printf "Searching scrollback...\n"
+
+    sb_lines=""
+    while read -r pane_id; do
+      [ -z "$pane_id" ] && continue
+      # Respect the pane's actual configured history-limit instead of a
+      # hardcoded number, otherwise older scrollback silently goes unsearched.
+      history_limit=$(tmux display-message -p -t "${window_target}.${pane_id}" '#{history_limit}' 2>/dev/null)
+      [ -z "$history_limit" ] && history_limit=2000
+      pane_history=$(tmux capture-pane -p -S "-${history_limit}" -t "${window_target}.${pane_id}" 2>/dev/null)
+      while IFS= read -r hline; do
+        [ -z "$(echo "$hline" | trim)" ] && continue
+        sb_lines="${sb_lines}[pane ${pane_id}] ${hline}"$'\n'
+      done <<< "$pane_history"
+    done < <(tmux list-panes -t "$window_target" -F '#P' 2>/dev/null)
+
+    if [ -z "$sb_lines" ]; then
+      clear
+      echo "No scrollback content found. Press any key to return..."
+      read -rsn1
+      exit 0
+    fi
+
+    picked=$(echo -n "$sb_lines" | fzf --ansi --reverse --cycle --height=100% --border=none --margin=1,2 --prompt="    " --header="Scrollback search — Esc to cancel" --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" --bind "home:first,end:last")
+
+    if [ -n "$picked" ]; then
+      pane_id=$(echo "$picked" | sed -n 's/^\[pane \([0-9]*\)\].*/\1/p')
+      search_text=$(echo "$picked" | sed 's/^\[pane [0-9]*\] //')
+      # Escape basic-regex metacharacters so literal text (paths, brackets,
+      # etc.) doesn't get misinterpreted by tmux's copy-mode search.
+      search_pattern=$(printf '%s' "$search_text" | sed 's/[.[\*^$\/]/\\&/g')
+
+      if [ -n "$pane_id" ] && [ -n "$search_pattern" ]; then
+        activate_target "${window_target}.${pane_id}"
+        tmux copy-mode -t "${window_target}.${pane_id}"
+        tmux send-keys -t "${window_target}.${pane_id}" -X search-backward "$search_pattern" 2>/dev/null
+      fi
+    fi
   fi
   exit 0
 fi
@@ -401,6 +475,7 @@ if [ "$1" = "--help" ]; then
   h_kill_pane=$(get_tmux_option "@spotlight-bind-kill-pane" "alt-z")
   h_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
   h_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
+  h_scrollback=$(get_tmux_option "@spotlight-bind-scrollback" "alt-/")
   h_help=$(get_tmux_option "@spotlight-bind-help" "?")
 
   clear
@@ -416,6 +491,7 @@ if [ "$1" = "--help" ]; then
   printf "  %-14s Close the highlighted pane (pane mode only)\n" "$h_kill_pane"
   printf "  %-14s Rename the highlighted window\n" "$h_rename"
   printf "  %-14s Rename the highlighted session\n" "$h_rename_session"
+  printf "  %-14s Search the window's scrollback, live\n" "$h_scrollback"
   printf "  %-14s Show this help\n" "$h_help"
   printf "\n\033[2mHide the \"%s for help\" hint above the list with:\033[0m\n" "$h_help"
   printf "\033[2m  set -g @spotlight-show-help-hint 'off'\033[0m\n"
@@ -423,17 +499,6 @@ if [ "$1" = "--help" ]; then
   read -rsn1
   exit 0
 fi
-
-# Switch to a target if already attached to a tmux client, otherwise attach
-# to it fresh — lets this script run standalone from a plain shell too.
-activate_target() {
-  local target="$1"
-  if [ -n "$TMUX" ]; then
-    tmux switch-client -t "$target"
-  else
-    tmux attach-session -t "$target"
-  fi
-}
 
 # Generate initial list. Outside tmux there's nothing to switch to yet, so
 # start in folder-search mode instead of an empty window list.
@@ -460,6 +525,7 @@ bind_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
 bind_panes=$(get_tmux_option "@spotlight-bind-panes" "alt-e")
 bind_kill_pane=$(get_tmux_option "@spotlight-bind-kill-pane" "alt-z")
 bind_help=$(get_tmux_option "@spotlight-bind-help" "?")
+bind_scrollback=$(get_tmux_option "@spotlight-bind-scrollback" "alt-/")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -482,6 +548,17 @@ if [ "$selection_color" = "none" ] || [ "$selection_color" = "transparent" ]; th
   fzf_selection="bg+:-1"
 elif [ "$selection_color" != "default" ]; then
   fzf_selection="bg+:$selection_color"
+fi
+
+# --with-shell forces execute()/reload() actions to run via bash instead of
+# the user's $SHELL — needed because fzf's own quoting when substituting {}
+# assumes POSIX/bash-style escaping, which breaks under shells with different
+# quoting rules (e.g. fish), surfacing as parse errors on scrollback rows
+# containing ANSI codes/unicode. Only available on fzf 0.51.0+.
+with_shell_flags=()
+fzf_version=$(fzf --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+if [ -n "$fzf_version" ] && [ "$(printf '%s\n%s\n' "0.51.0" "$fzf_version" | sort -V | head -1)" = "0.51.0" ]; then
+  with_shell_flags=(--with-shell "bash -c")
 fi
 
 # Build fzf preview flags dynamically
@@ -537,6 +614,7 @@ selected=$(echo -e "$window_list" | fzf \
   --with-nth=1 \
   --print-query \
   "${preview_flags[@]}" \
+  "${with_shell_flags[@]}" \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "home:first,end:last" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
@@ -547,7 +625,8 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "${bind_kill_pane}:execute-silent($CURRENT_DIR/switcher.sh --kill-pane {})+reload($CURRENT_DIR/switcher.sh --panes)" \
   --bind "${bind_rename}:execute($CURRENT_DIR/switcher.sh --rename-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_rename_session}:execute($CURRENT_DIR/switcher.sh --rename-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
-  --bind "${bind_help}:execute($CURRENT_DIR/switcher.sh --help)"
+  --bind "${bind_help}:execute($CURRENT_DIR/switcher.sh --help)" \
+  --bind "${bind_scrollback}:execute($CURRENT_DIR/switcher.sh --scrollback {})"
 )
 
 # With --print-query, fzf prints the typed query as the first line, followed
@@ -589,7 +668,7 @@ if [ -n "$match" ]; then
     fi
   else
     # It is a zoxide directory! Launch (or jump back to) a session named after it.
-    target_path=$(echo "$match" | cut -f 1 | xargs | sed 's/^📂 //')
+    target_path=$(echo "$match" | cut -f 1 | trim | sed 's/^📂 //')
     # Expand ~ to $HOME
     target_path="${target_path/#\~/$HOME}"
 
