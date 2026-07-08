@@ -58,6 +58,7 @@ Then hit `prefix + I` to fetch and install the plugin.
 - `Alt + z` : Close the highlighted **pane** (only while in pane mode; reloads list)
 - `Alt + /` : **Scrollback search** — fuzzy-search every pane's terminal history in the highlighted window (live, no save/snapshot step) and jump straight to that line in copy-mode
 - `Alt + j` / `Alt + n` : Move down · `Alt + k` / `Alt + p` : Move up (wraps around at the top/bottom of the list)
+- `Alt + h` / `Alt + l` : Cycle to the previous / next mode (windows → folders → panes → windows...) — an alternative to jumping directly with `Alt + w`/`f`/`e`, which still work as before
 - `Home` / `End` : Jump straight to the first / last item — handy on a long list
 - `?` : Show a keybindings cheatsheet, reflecting your actual configured binds (not just the defaults) — press any key to return
 - A small "`?` for help" hint is always visible above the list by default, so the help screen isn't something you have to already know about — disable with `set -g @spotlight-show-help-hint 'off'`
@@ -98,6 +99,8 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-panes 'alt-e'
 # set -g @spotlight-bind-kill-pane 'alt-z'
 # set -g @spotlight-bind-scrollback 'alt-/'
+# set -g @spotlight-bind-mode-prev 'alt-h'
+# set -g @spotlight-bind-mode-next 'alt-l'
 # set -g @spotlight-bind-help '?'
 # note: the default '?' bind means typing a literal "?" no longer filters
 # the search box — change it if you regularly search for text containing one

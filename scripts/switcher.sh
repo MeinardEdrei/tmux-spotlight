@@ -11,6 +11,27 @@ trim() {
   sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
+# Tracks which list mode (windows/folders/panes) is currently shown, so
+# Alt+h/Alt+l can cycle relative to "wherever you actually are" — including
+# after jumping there directly via Alt+w/f/e — rather than each keybind
+# needing to independently know the current state.
+MODE_FILE="$HOME/.cache/tmux-spotlight/mode"
+MODE_ORDER=(windows folders panes)
+
+set_mode() {
+  mkdir -p "$(dirname "$MODE_FILE")"
+  echo "$1" > "$MODE_FILE"
+}
+
+get_mode() {
+  local mode
+  mode=$(cat "$MODE_FILE" 2>/dev/null)
+  case "$mode" in
+    windows|folders|panes) echo "$mode" ;;
+    *) echo "windows" ;;
+  esac
+}
+
 # Helper function to get tmux user options
 get_tmux_option() {
   local option="$1"
@@ -246,12 +267,14 @@ print_pane_list() {
 
 # If run with --list, just print the list and exit
 if [ "$1" = "--list" ]; then
+  set_mode windows
   print_window_list
   exit 0
 fi
 
 # If run with --panes, print the pane list and exit
 if [ "$1" = "--panes" ]; then
+  set_mode panes
   print_pane_list
   exit 0
 fi
@@ -296,7 +319,36 @@ print_folder_list() {
 
 # If run with --zoxide, print the folder list and exit
 if [ "$1" = "--zoxide" ]; then
+  set_mode folders
   print_folder_list
+  exit 0
+fi
+
+# Cycle to the next/previous mode in windows -> folders -> panes -> ...
+if [ "$1" = "--cycle-mode" ]; then
+  direction="$2"
+  current_mode=$(get_mode)
+  current_index=0
+  for i in "${!MODE_ORDER[@]}"; do
+    [ "${MODE_ORDER[$i]}" = "$current_mode" ] && current_index=$i
+  done
+  count=${#MODE_ORDER[@]}
+  if [ "$direction" = "prev" ]; then
+    next_index=$(( (current_index - 1 + count) % count ))
+  else
+    next_index=$(( (current_index + 1) % count ))
+  fi
+  set_mode "${MODE_ORDER[$next_index]}"
+  exit 0
+fi
+
+# Render whichever mode is currently active (used after --cycle-mode)
+if [ "$1" = "--render-mode" ]; then
+  case "$(get_mode)" in
+    folders) print_folder_list ;;
+    panes) print_pane_list ;;
+    *) print_window_list ;;
+  esac
   exit 0
 fi
 
@@ -476,6 +528,8 @@ if [ "$1" = "--help" ]; then
   h_rename=$(get_tmux_option "@spotlight-bind-rename" "alt-r")
   h_rename_session=$(get_tmux_option "@spotlight-bind-rename-session" "alt-s")
   h_scrollback=$(get_tmux_option "@spotlight-bind-scrollback" "alt-/")
+  h_mode_prev=$(get_tmux_option "@spotlight-bind-mode-prev" "alt-h")
+  h_mode_next=$(get_tmux_option "@spotlight-bind-mode-next" "alt-l")
   h_help=$(get_tmux_option "@spotlight-bind-help" "?")
 
   clear
@@ -486,6 +540,7 @@ if [ "$1" = "--help" ]; then
   printf "  %-14s Switch to project folders (zoxide + fd)\n" "$h_folders"
   printf "  %-14s Switch to open windows\n" "$h_windows"
   printf "  %-14s Switch to panes\n" "$h_panes"
+  printf "  %-14s Cycle to the previous / next mode\n" "$h_mode_prev $h_mode_next"
   printf "  %-14s Kill the highlighted session (confirm required)\n" "$h_kill_session"
   printf "  %-14s Close the highlighted window\n" "$h_kill_window"
   printf "  %-14s Close the highlighted pane (pane mode only)\n" "$h_kill_pane"
@@ -503,8 +558,10 @@ fi
 # Generate initial list. Outside tmux there's nothing to switch to yet, so
 # start in folder-search mode instead of an empty window list.
 if [ -n "$TMUX" ]; then
+  set_mode windows
   window_list=$(print_window_list)
 else
+  set_mode folders
   window_list=$(print_folder_list)
 fi
 
@@ -526,6 +583,8 @@ bind_panes=$(get_tmux_option "@spotlight-bind-panes" "alt-e")
 bind_kill_pane=$(get_tmux_option "@spotlight-bind-kill-pane" "alt-z")
 bind_help=$(get_tmux_option "@spotlight-bind-help" "?")
 bind_scrollback=$(get_tmux_option "@spotlight-bind-scrollback" "alt-/")
+bind_mode_prev=$(get_tmux_option "@spotlight-bind-mode-prev" "alt-h")
+bind_mode_next=$(get_tmux_option "@spotlight-bind-mode-next" "alt-l")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -620,6 +679,8 @@ selected=$(echo -e "$window_list" | fzf \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_panes}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --panes)" \
+  --bind "${bind_mode_prev}:execute-silent($CURRENT_DIR/switcher.sh --cycle-mode prev)+change-prompt(    )+reload($CURRENT_DIR/switcher.sh --render-mode)" \
+  --bind "${bind_mode_next}:execute-silent($CURRENT_DIR/switcher.sh --cycle-mode next)+change-prompt(    )+reload($CURRENT_DIR/switcher.sh --render-mode)" \
   --bind "${bind_kill_session}:execute($CURRENT_DIR/switcher.sh --kill-session {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_window}:execute-silent($CURRENT_DIR/switcher.sh --kill-window {})+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_kill_pane}:execute-silent($CURRENT_DIR/switcher.sh --kill-pane {})+reload($CURRENT_DIR/switcher.sh --panes)" \
