@@ -130,10 +130,19 @@ MRU (most-recently-used) ordering is tracked in `~/.cache/tmux-spotlight/mru`. D
 - [x] Inline Renaming (sessions) — rename tmux sessions directly from inside the popup
 - [x] Named Session Launching — folders opened via zoxide/fd auto-create a session named after the directory (instead of a numeric default), and typing a brand-new query creates a session under that name
 - [x] MRU Ordering — sort the window list by most-recently-used instead of tmux's default creation order, so your last few windows surface first
-- [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
 - [x] Standalone Launch — usable from outside tmux (e.g. a fresh shell) to pick a folder/session and attach, instead of requiring an existing tmux client
 - [x] Pane-Level Jumping — search and switch directly to a specific pane, not just the window containing it
 - [x] Attached/Detached Session Display — show whether a session already has a client attached elsewhere in the list
 - [x] In-Popup Help — a `?` cheatsheet showing all keybinds, reflecting the user's actual configured binds
 - [x] Configurable Folder Excludes — let `@spotlight-folders-exclude` extend the hardcoded fd ignore list (`.git`, `node_modules`, etc.) with project-specific directories
 - [x] Scrollback Search — fuzzy-search a window's terminal history right from the popup and jump straight to that point in copy-mode, live, with no snapshot/save step required
+
+### v2.1+ (planned)
+
+- [ ] Universal Search — blend windows, panes, folders, and scrollback matches into one ranked list instead of requiring a mode toggle first, so you just type what you're thinking about
+- [ ] Tmux Command Palette — fuzzy-run tmux actions themselves (split, sync-panes, toggle status bar, resize, kill-server) without memorizing prefix-key combos
+- [ ] Undo-Safety on Kill Actions — a brief grace window to undo a session kill, on top of the existing confirmation prompt
+- [ ] First-Run Welcome Tip — a one-time friendly message pointing new users to `?` for help, so discovery doesn't depend on reading the README
+- [ ] Accessibility: `NO_COLOR` support and a colorblind-safe palette option
+- [ ] Uninstall/Cleanup Helper — a script to cleanly remove the MRU cache and shell alias
+- [ ] Theme Presets — out-of-the-box support for `catppuccin`, `nord`, `gruvbox`, `tokyonight`
