@@ -97,6 +97,26 @@ if [ "$1" = "--record-mru" ]; then
   exit 0
 fi
 
+# If run with --jump-back, switch to the previously active window (the entry
+# just before the current one in MRU order) — a global Alt+Tab-style toggle
+# that works without opening the popup at all. Only ever fires from an
+# already-attached client, so no standalone/attach-session fallback needed.
+if [ "$1" = "--jump-back" ]; then
+  if [ -s "$MRU_FILE" ]; then
+    prev_target=$(tail -n 2 "$MRU_FILE" | head -n 1)
+    if [ -n "$prev_target" ]; then
+      tmux switch-client -t "$prev_target" 2>/dev/null
+      # after-select-window does NOT fire for cross-session switch-client
+      # (confirmed: it only fires for window-selection within the same
+      # session), so record MRU explicitly here instead of relying on the
+      # hook — otherwise repeated presses keep targeting the same stale
+      # entry instead of toggling back and forth.
+      record_mru "$prev_target"
+    fi
+  fi
+  exit 0
+fi
+
 # Helper function to print the formatted window list
 print_window_list() {
   # The session driving this very popup is trivially "attached" — exclude it

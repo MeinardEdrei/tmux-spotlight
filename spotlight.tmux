@@ -55,6 +55,15 @@ fi
 # navigation), so MRU ordering reflects real usage, not just popup picks.
 tmux set-hook -g after-select-window "run-shell -b '$CURRENT_DIR/scripts/switcher.sh --record-mru \"#{session_name}:#{window_index}\"'"
 
+# Global toggle: jump straight to the previously active window without
+# opening the popup at all (like macOS Cmd+Tab). Defaults to a plain Alt+letter
+# combo rather than Alt+Tab — Tab specifically is near-universally reserved
+# by window managers/compositors at a level below the application (confirmed
+# even on tiling WMs like Niri, where it's core engine behavior, not a
+# user-configurable bind), unlike plain Alt+<letter> combos which are safe.
+key_bind_jump_back=$(get_tmux_option "@spotlight-bind-jump-back" "M-b")
+tmux bind-key -n "$key_bind_jump_back" run-shell -b "'$CURRENT_DIR/scripts/switcher.sh' --jump-back"
+
 # Auto-install the standalone-launch shell alias/function on first load, so
 # new users don't have to discover and run install-shell-alias.sh manually.
 # The script is idempotent (skips if already installed), so this is a no-op

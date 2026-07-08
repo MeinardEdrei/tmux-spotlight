@@ -48,6 +48,7 @@ Then hit `prefix + I` to fetch and install the plugin.
 | `prefix + Tab` | Open the popup (default, inside tmux) |
 | `Alt + Space` | Open the popup, no prefix needed, works anywhere in tmux |
 | `tsp` (in any shell) | Open it **outside tmux entirely** — picks a folder and attaches into a session. Auto-installed on first plugin load; see [Standalone Launch](#standalone-launch) below. |
+| `Alt + b` | Jump straight back to your **previously active window** — no popup needed, toggles back and forth like macOS `Cmd+Tab`. |
 
 ### Inside the popup
 
@@ -81,6 +82,7 @@ Add any of these to your `~/.tmux.conf` to override the defaults.
 ```tmux
 set -g @spotlight-bind 'Tab'
 set -g @spotlight-bind-triggerless 'M-Space'
+set -g @spotlight-bind-jump-back 'M-b'
 set -g @spotlight-width '80%'
 set -g @spotlight-height '60%'
 ```
