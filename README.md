@@ -53,8 +53,8 @@ Then hit `prefix + I` to fetch and install the plugin.
 
 | Key | Action |
 |---|---|
-| `Enter` | Switch to the highlighted window, or launch/attach a **named session** for a folder |
-| *(type a name with no matches, then `Enter`)* | Create a brand-new session under that name |
+| `Enter` / `Alt + m` | Switch to the highlighted window, or launch/attach a **named session** for a folder |
+| *(type a name with no matches, then `Enter`/`Alt + m`)* | Create a brand-new session under that name |
 | `Alt + f` | Switch to **project folders** (`zoxide` + `fd`) |
 | `Alt + w` | Switch to **open windows** |
 | `Alt + e` | Switch to **panes** — jump to a specific split, not just its window |
@@ -118,6 +118,7 @@ set -g @spotlight-preview-ratio '50%'
 # set -g @spotlight-bind-panes 'alt-e'
 # set -g @spotlight-bind-mode-prev 'alt-h'
 # set -g @spotlight-bind-mode-next 'alt-l'
+# set -g @spotlight-bind-accept 'alt-m'
 # set -g @spotlight-bind-kill-session 'alt-x'
 # set -g @spotlight-bind-kill-window 'alt-q'
 # set -g @spotlight-bind-kill-pane 'alt-z'

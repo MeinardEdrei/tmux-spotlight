@@ -534,7 +534,8 @@ if [ "$1" = "--help" ]; then
 
   clear
   printf "\033[1mtmux-spotlight — keybindings\033[0m\n\n"
-  printf "  %-14s Switch to the highlighted window, or launch/attach a session for a folder\n" "Enter"
+  h_accept=$(get_tmux_option "@spotlight-bind-accept" "alt-m")
+  printf "  %-14s Switch to the highlighted window, or launch/attach a session for a folder\n" "Enter/$h_accept"
   printf "  %-14s Move down / up (wraps around)\n" "Alt+j Alt+k"
   printf "  %-14s Jump to the first / last item\n" "Home / End"
   printf "  %-14s Switch to project folders (zoxide + fd)\n" "$h_folders"
@@ -585,6 +586,7 @@ bind_help=$(get_tmux_option "@spotlight-bind-help" "?")
 bind_scrollback=$(get_tmux_option "@spotlight-bind-scrollback" "alt-/")
 bind_mode_prev=$(get_tmux_option "@spotlight-bind-mode-prev" "alt-h")
 bind_mode_next=$(get_tmux_option "@spotlight-bind-mode-next" "alt-l")
+bind_accept=$(get_tmux_option "@spotlight-bind-accept" "alt-m")
 
 # Translate top/bottom aliases to fzf up/down syntax
 if [ "$preview_location" = "top" ]; then
@@ -676,6 +678,7 @@ selected=$(echo -e "$window_list" | fzf \
   "${with_shell_flags[@]}" \
   --bind "alt-j:down,alt-n:down,alt-k:up,alt-p:up" \
   --bind "home:first,end:last" \
+  --bind "${bind_accept}:accept" \
   --bind "${bind_folders}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --zoxide)" \
   --bind "${bind_windows}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --list)" \
   --bind "${bind_panes}:change-prompt(    )+reload($CURRENT_DIR/switcher.sh --panes)" \
