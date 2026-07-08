@@ -67,5 +67,5 @@ if [ "$auto_alias" = "on" ]; then
   # running (e.g. fish launched directly by a terminal emulator).
   default_shell_path=$(tmux show-option -gqv default-shell)
   default_shell_name=$(basename "${default_shell_path:-}")
-  tmux run-shell -b "'$CURRENT_DIR/scripts/install-shell-alias.sh' '$alias_name' '$default_shell_name'"
+  tmux run-shell -b "'$CURRENT_DIR/scripts/install-shell-alias.sh' '$alias_name' '$default_shell_name' >/dev/null 2>&1"
 fi
