@@ -124,93 +124,64 @@ print_window_list() {
   local current_session=""
   [ -n "$TMUX" ] && current_session=$(tmux display-message -p '#S' 2>/dev/null)
 
-  # Store the window list in a variable to avoid listing twice
-  local raw_list
-  raw_list=$(tmux list-windows -a -F '#S | #I | #W | #{pane_current_path} | #{session_attached} | #{window_active}' 2>/dev/null)
-  
-  # First pass: find the maximum length of "$display_name"
-  local max_name_len=0
-  while read -r line; do
-    [ -z "$line" ] && continue
-    local name
-    name=$(echo "$line" | cut -d '|' -f 3 | trim)
-    # Ensure window name starts with an emoji for clean visual display
-    local char_code
-    char_code=$(LC_ALL=C printf '%d' "'$name" 2>/dev/null)
-    local display_name
-    if [ -n "$char_code" ] && [ "$char_code" -lt 128 ]; then
-      display_name="🖥️ $name"
-    else
-      display_name="$name"
-    fi
-    local name_len=${#display_name}
-    if [ $name_len -gt $max_name_len ]; then
-      max_name_len=$name_len
-    fi
-  done <<< "$raw_list"
+  # Hot path: runs on every popup open and every reload() action, so all
+  # formatting stays in one awk pass. Anything that forks per row (cut/sed/
+  # printf command substitutions) costs ~50ms per window — multi-second
+  # popups for heavy users. Tab as the tmux field separator, since window
+  # names can legitimately contain '|'.
+  tmux list-windows -a -F $'#S\t#I\t#W\t#{pane_current_path}\t#{session_attached}\t#{window_active}' 2>/dev/null | awk -F '\t' \
+    -v home="$HOME" -v cur="$current_session" -v mru_file="$MRU_FILE" '
+    function trim(s) { gsub(/^[ \t]+/, "", s); gsub(/[ \t]+$/, "", s); return s }
+    BEGIN {
+      # MRU keys can repeat in the file; the plain overwrite means the last
+      # occurrence wins, matching the "most recent = last line" convention.
+      while ((getline mline < mru_file) > 0) { mru_total++; mru_line[mline] = mru_total }
+      close(mru_file)
+      spaces = sprintf("%512s", "")
+    }
+    {
+      session[NR] = trim($1); idx[NR] = trim($2); path[NR] = trim($4)
+      attached[NR] = trim($5); active[NR] = trim($6)
+      name = trim($3)
+      # Ensure window name starts with an emoji for clean visual display
+      disp[NR] = (name ~ /^[\001-\177]/) ? "🖥️ " name : name
+      if (length(disp[NR]) > max_len) max_len = length(disp[NR])
+    }
+    END {
+      for (i = 1; i <= NR; i++) {
+        p = path[i]
+        if (index(p, home) == 1) p = "~" substr(p, length(home) + 1)
 
-  # Second pass: format each row, prefixed with its MRU rank for sorting below
-  local sep=$'\x01'
-  local output=""
-  while read -r line; do
-    [ -z "$line" ] && continue
-    session=$(echo "$line" | cut -d '|' -f 1 | trim)
-    index=$(echo "$line" | cut -d '|' -f 2 | trim)
-    name=$(echo "$line" | cut -d '|' -f 3 | trim)
-    path=$(echo "$line" | cut -d '|' -f 4 | trim)
-    attached=$(echo "$line" | cut -d '|' -f 5 | trim)
-    active=$(echo "$line" | cut -d '|' -f 6 | trim)
+        # Pad by character count (length() in a UTF-8 locale), not printf
+        # byte width — multi-byte emoji prefixes would throw off the padding
+        # math and misalign the whole column.
+        pad = max_len - length(disp[i]); if (pad < 0) pad = 0
+        padded = disp[i] substr(spaces, 1, pad)
 
-    path_short=$(echo "$path" | sed "s|^$HOME|~|")
+        # Green is reserved for the window you are actually, currently
+        # sitting in right now — not just any window that happens to be
+        # "active" within some other attached session (that would make a
+        # different terminal current window look like yours).
+        name_color = (session[i] == cur && active[i] == "1") ? "\033[1;32m" : "\033[1;37m"
 
-    # Ensure window name starts with an emoji for clean visual display
-    char_code=$(LC_ALL=C printf '%d' "'$name" 2>/dev/null)
-    if [ -n "$char_code" ] && [ "$char_code" -lt 128 ]; then
-      display_name="🖥️ $name"
-    else
-      display_name="$name"
-    fi
+        # session_attached is the count of clients attached to this session —
+        # color the session name itself (instead of adding another dot glyph
+        # next to the existing "session · path" separator) when it is open
+        # elsewhere. Green is unambiguous here because the window-name green
+        # above is strictly scoped to your own current session.
+        if (attached[i] != "0" && session[i] != cur)
+          session_colored = "\033[1;32m" session[i] "\033[0m"
+        else
+          session_colored = "\033[38;5;244m" session[i] "\033[0m"
 
-    # Green is reserved for the window you are actually, currently sitting in
-    # right now — not just any window that happens to be "active" within some
-    # other attached session (that would make a different terminal's current
-    # window look like yours).
-    if [ "$session" = "$current_session" ] && [ "$active" = "1" ]; then
-      name_color="\e[1;32m"    # Green bold for the window you're in right now
-    else
-      name_color="\e[1;37m"    # White bold for every other window
-    fi
-
-    # Pad manually using bash's character count (${#string}), not printf's
-    # %-Ns width — that counts bytes, so multi-byte emoji prefixes throw off
-    # the padding math and misalign the whole column.
-    pad_len=$((max_name_len - ${#display_name}))
-    [ "$pad_len" -lt 0 ] && pad_len=0
-    display_name_padded="${display_name}$(printf '%*s' "$pad_len" '')"
-
-    # session_attached is the count of clients attached to this session —
-    # color the session name itself (instead of adding another dot glyph next
-    # to the existing "session · path" separator) when it's open elsewhere.
-    # Safe to reuse green here now that the window-name green above is
-    # strictly scoped to your own current session — no more ambiguity.
-    if [ "$attached" != "0" ] && [ "$session" != "$current_session" ]; then
-      session_colored=$(printf '\e[1;32m%s\e[0m' "$session")
-    else
-      session_colored=$(printf '\e[38;5;244m%s\e[0m' "$session")
-    fi
-
-    # Rank 0 = most recently used; unseen windows sort last (999999), keeping
-    # tmux's original order among themselves via a stable sort.
-    local rank=999999
-    if [ -s "$MRU_FILE" ]; then
-      rank=$(awk -v k="${session}:${index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
-    fi
-
-    formatted=$(printf "  ${name_color}%s\e[0m  %s\e[38;5;244m · %s\e[0m\t%s:%s" "$display_name_padded" "$session_colored" "$path_short" "$session" "$index")
-    output="${output}${rank}${sep}${formatted}"$'\n'
-  done <<< "$raw_list"
-
-  echo -n "$output" | sort -t "$sep" -k1,1n -s | cut -d "$sep" -f2-
+        # Rank 0 = most recently used; unseen windows sort last (999999),
+        # keeping tmux original order among themselves via the stable sort.
+        key = session[i] ":" idx[i]
+        rank = (key in mru_line) ? mru_total - mru_line[key] : 999999
+        printf "%d\001  %s%s\033[0m  %s\033[38;5;244m · %s\033[0m\t%s:%s\n",
+          rank, name_color, padded, session_colored, p, session[i], idx[i]
+      }
+    }' | sort -t $'\x01' -k1,1n -s | cut -d $'\x01' -f2-
 }
 
 # Helper function to print the formatted pane list — one row per pane instead
@@ -220,69 +191,50 @@ print_pane_list() {
   local current_session=""
   [ -n "$TMUX" ] && current_session=$(tmux display-message -p '#S' 2>/dev/null)
 
-  local raw_list
-  raw_list=$(tmux list-panes -a -F '#{session_name} | #{window_index} | #{pane_index} | #{pane_current_command} | #{pane_current_path} | #{session_attached} | #{window_active} | #{pane_active}' 2>/dev/null)
+  # Hot path, same one-awk-pass rule as print_window_list (see the comment
+  # there) — pane mode has the most rows of any mode, so per-row forks
+  # hurt worst here.
+  tmux list-panes -a -F $'#{session_name}\t#{window_index}\t#{pane_index}\t#{pane_current_command}\t#{pane_current_path}\t#{session_attached}\t#{window_active}\t#{pane_active}' 2>/dev/null | awk -F '\t' \
+    -v home="$HOME" -v cur="$current_session" -v mru_file="$MRU_FILE" '
+    function trim(s) { gsub(/^[ \t]+/, "", s); gsub(/[ \t]+$/, "", s); return s }
+    BEGIN {
+      while ((getline mline < mru_file) > 0) { mru_total++; mru_line[mline] = mru_total }
+      close(mru_file)
+      spaces = sprintf("%512s", "")
+    }
+    {
+      session[NR] = trim($1); widx[NR] = trim($2); pidx[NR] = trim($3)
+      path[NR] = trim($5); attached[NR] = trim($6)
+      wactive[NR] = trim($7); pactive[NR] = trim($8)
+      disp[NR] = "🖥️ " trim($4)
+      if (length(disp[NR]) > max_len) max_len = length(disp[NR])
+    }
+    END {
+      for (i = 1; i <= NR; i++) {
+        p = path[i]
+        if (index(p, home) == 1) p = "~" substr(p, length(home) + 1)
 
-  # First pass: find the max length of the display label for clean padding
-  local max_name_len=0
-  while read -r line; do
-    [ -z "$line" ] && continue
-    local command
-    command=$(echo "$line" | cut -d '|' -f 4 | trim)
-    local display_name="🖥️ $command"
-    local name_len=${#display_name}
-    if [ $name_len -gt $max_name_len ]; then
-      max_name_len=$name_len
-    fi
-  done <<< "$raw_list"
+        # Pad by character count (see print_window_list for why).
+        pad = max_len - length(disp[i]); if (pad < 0) pad = 0
+        padded = disp[i] substr(spaces, 1, pad)
 
-  local sep=$'\x01'
-  local output=""
-  while read -r line; do
-    [ -z "$line" ] && continue
-    session=$(echo "$line" | cut -d '|' -f 1 | trim)
-    window_index=$(echo "$line" | cut -d '|' -f 2 | trim)
-    pane_index=$(echo "$line" | cut -d '|' -f 3 | trim)
-    command=$(echo "$line" | cut -d '|' -f 4 | trim)
-    path=$(echo "$line" | cut -d '|' -f 5 | trim)
-    attached=$(echo "$line" | cut -d '|' -f 6 | trim)
-    window_active=$(echo "$line" | cut -d '|' -f 7 | trim)
-    pane_active=$(echo "$line" | cut -d '|' -f 8 | trim)
+        # Green only for the exact pane you are currently sitting in.
+        name_color = (session[i] == cur && wactive[i] == "1" && pactive[i] == "1") ? "\033[1;32m" : "\033[1;37m"
 
-    path_short=$(echo "$path" | sed "s|^$HOME|~|")
-    display_name="🖥️ $command"
+        if (attached[i] != "0" && session[i] != cur)
+          session_colored = "\033[1;32m" session[i] "\033[0m"
+        else
+          session_colored = "\033[38;5;244m" session[i] "\033[0m"
 
-    # Green only for the exact pane you're currently sitting in right now.
-    if [ "$session" = "$current_session" ] && [ "$window_active" = "1" ] && [ "$pane_active" = "1" ]; then
-      name_color="\e[1;32m"
-    else
-      name_color="\e[1;37m"
-    fi
-
-    # Pad manually using character count (see print_window_list for why).
-    pad_len=$((max_name_len - ${#display_name}))
-    [ "$pad_len" -lt 0 ] && pad_len=0
-    display_name_padded="${display_name}$(printf '%*s' "$pad_len" '')"
-
-    if [ "$attached" != "0" ] && [ "$session" != "$current_session" ]; then
-      session_colored=$(printf '\e[1;32m%s\e[0m' "$session")
-    else
-      session_colored=$(printf '\e[38;5;244m%s\e[0m' "$session")
-    fi
-
-    # Reuse the window-level MRU ranking (keyed by session:window, ignoring
-    # pane) so pane mode sorts consistently with window mode rather than
-    # tracking a whole separate MRU history just for panes.
-    local rank=999999
-    if [ -s "$MRU_FILE" ]; then
-      rank=$(awk -v k="${session}:${window_index}" '$0==k{ln=FNR} END{print (ln ? FNR-ln : 999999)}' "$MRU_FILE")
-    fi
-
-    formatted=$(printf "  ${name_color}%s\e[0m  %s\e[38;5;244m · %s\e[0m\t%s:%s.%s" "$display_name_padded" "$session_colored" "$path_short" "$session" "$window_index" "$pane_index")
-    output="${output}${rank}${sep}${formatted}"$'\n'
-  done <<< "$raw_list"
-
-  echo -n "$output" | sort -t "$sep" -k1,1n -s | cut -d "$sep" -f2-
+        # Reuse the window-level MRU ranking (keyed by session:window,
+        # ignoring pane) so pane mode sorts consistently with window mode
+        # rather than tracking a separate MRU history just for panes.
+        key = session[i] ":" widx[i]
+        rank = (key in mru_line) ? mru_total - mru_line[key] : 999999
+        printf "%d\001  %s%s\033[0m  %s\033[38;5;244m · %s\033[0m\t%s:%s.%s\n",
+          rank, name_color, padded, session_colored, p, session[i], widx[i], pidx[i]
+      }
+    }' | sort -t $'\x01' -k1,1n -s | cut -d $'\x01' -f2-
 }
 
 # If run with --list, just print the list and exit
